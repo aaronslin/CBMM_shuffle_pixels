@@ -38,6 +38,18 @@ def divorced(image, hash, dimensions=MNIST_DIMENSIONS):
 	output = np.row_stack((hash, shadow))
 	return output
 
+def batch_interleave(batch, hash):
+	(x,y) = MNIST_DIMENSIONS
+	out = [interleaved(img.reshape((x,y)), hash).reshape((2*x*y,)) \
+				for img in batch]
+	return np.array(out)
 
-digit1 = load_img("1_mnist.png")
-digit8 = load_img("8_mnist.png")
+def batch_divorce(batch, hash):
+	(x,y) = MNIST_DIMENSIONS
+	out = [divorced(img.reshape((x,y)), hash).reshape((2*x*y,)) \
+				for img in batch]
+	return np.array(out)
+
+
+# digit1 = load_img("1_mnist.png")
+# digit8 = load_img("8_mnist.png")
