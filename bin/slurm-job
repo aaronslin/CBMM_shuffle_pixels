@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#SBATCH --job-name=softmax_digits
+#SBATCH --output digits.out
+#SBATCH --ntasks=1
+#SBATCH --gres=gpu:1
+
+set -euxo pipefail
+
+# allows us to use modules within a script
+source ${MODULESHOME}/init/bash
+
+module add openmind/singularity/2.2.1
+
+singularity exec --bind /om:/om py35-tf.img python -c 'from digits import example; example.softmax_digits();'
