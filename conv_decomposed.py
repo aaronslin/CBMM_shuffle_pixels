@@ -56,7 +56,6 @@ def maxpool2d(x, k=2):
     return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
                           padding='SAME')
 
-
 # Create model
 def conv_interleave(x, weights, biases, dropout):
     print()
@@ -92,12 +91,12 @@ def conv_interleave(x, weights, biases, dropout):
     # Output, class prediction
     out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
     print("out", out.get_shape())
-    return out
+    return out, weights['wc0']
 
 # Store layers weight & bias
 weights = {
     # 2x1 conv, 1 input, 8 outputs (8 is arbitrary)
-    'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8])),
+    'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8], mean=1.0, stddev=1.0)),
     # 5x5 conv, 8 input, 32 outputs
     'wc1': tf.Variable(tf.random_normal([5, 5, 8, 32])),
     # 5x5 conv, 32 inputs, 64 outputs
@@ -109,7 +108,7 @@ weights = {
 }
 
 biases = {
-    'bc0': tf.Variable(tf.random_normal([8])),
+    'bc0': tf.constant(0.0, shape=[8]),
     'bc1': tf.Variable(tf.random_normal([32])),
     'bc2': tf.Variable(tf.random_normal([64])),
     'bd1': tf.Variable(tf.random_normal([1024])),
@@ -117,7 +116,7 @@ biases = {
 }
 
 # Construct model
-pred = conv_interleave(x, weights, biases, keep_prob)
+pred, w0 = conv_interleave(x, weights, biases, keep_prob)
 
 # Define loss and optimizer
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
@@ -152,13 +151,14 @@ with tf.Session() as sess:
             loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
                                                               y: batch_y,
                                                               keep_prob: 1.})
+            layer0_weights = sess.run([w0])
             testAcc = sess.run(accuracy, feed_dict={x: test_x,
                                       y: mnist.test.labels[:256],
                                       keep_prob: 1.})
             print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
                   "{:.5f}".format(acc) + ", Test Acc.= "+ \
                   "{:.5f}".format(testAcc))
-            print("\t", t1-t0)
+            print("\t", layer0_weights)
         step += 1
     print("Optimization Finished!")
 

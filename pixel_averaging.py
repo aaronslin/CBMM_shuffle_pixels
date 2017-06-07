@@ -26,9 +26,12 @@ def generate_rand_grid(dimensions=MNIST_DIMENSIONS):
 def modulus_shadow(image, hash):
 	return (image-hash) % PIXEL_MAX_VALUE
 
+def absolute_shadow(image, hash):
+	return (image-hash)
+
 def interleaved(image, hash, dimensions=MNIST_DIMENSIONS):
 	(r,c) = dimensions
-	shadow = modulus_shadow(image, hash)
+	shadow = absolute_shadow(image, hash)
 	output = np.ravel(np.column_stack((hash, shadow))).reshape((-1,c))
 	return output
 
