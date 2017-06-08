@@ -101,76 +101,93 @@ def conv_interleave(x, weights, biases, dropout):
     print("out", out.get_shape())
     return out, weights['wc0']
 
-# Store layers weight & bias
-weights = {
-    # 2x1 conv, 1 input, 8 outputs (8 is arbitrary)
-    'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8], mean=1.0, stddev=sigma)),
-    # 5x5 conv, 8 input, 32 outputs
-    'wc1': tf.Variable(tf.random_normal([5, 5, 8, 32])),
-    # 5x5 conv, 32 inputs, 64 outputs
-    'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
-    # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
-    # 1024 inputs, 10 outputs (class prediction)
-    'out': tf.Variable(tf.random_normal([1024, n_classes]))
-}
+def initialize_NN_and_train(sigma):
+    # Store layers weight & bias
+    weights = {
+        # 2x1 conv, 1 input, 8 outputs (8 is arbitrary)
+        'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8], mean=1.0, stddev=sigma)),
+        # 5x5 conv, 8 input, 32 outputs
+        'wc1': tf.Variable(tf.random_normal([5, 5, 8, 32])),
+        # 5x5 conv, 32 inputs, 64 outputs
+        'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+        # fully connected, 7*7*64 inputs, 1024 outputs
+        'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
+        # 1024 inputs, 10 outputs (class prediction)
+        'out': tf.Variable(tf.random_normal([1024, n_classes]))
+    }
 
-biases = {
-    'bc0': tf.constant(0.0, shape=[8]),
-    'bc1': tf.Variable(tf.random_normal([32])),
-    'bc2': tf.Variable(tf.random_normal([64])),
-    'bd1': tf.Variable(tf.random_normal([1024])),
-    'out': tf.Variable(tf.random_normal([n_classes]))
-}
+    biases = {
+        'bc0': tf.constant(0.0, shape=[8]),
+        'bc1': tf.Variable(tf.random_normal([32])),
+        'bc2': tf.Variable(tf.random_normal([64])),
+        'bd1': tf.Variable(tf.random_normal([1024])),
+        'out': tf.Variable(tf.random_normal([n_classes]))
+    }
 
-# Construct model
-pred, w0 = conv_interleave(x, weights, biases, keep_prob)
+    # Construct model
+    pred, w0 = conv_interleave(x, weights, biases, keep_prob)
 
-# Define loss and optimizer
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
-optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+    # Define loss and optimizer
+    cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
 
-# Evaluate model
-correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+    # Evaluate model
+    correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
-# Initializing the variables
-init = tf.initialize_all_variables()
+    # Initializing the variables
+    init = tf.initialize_all_variables()
 
-# Launch the graph
-acc = 0
-testAcc = 0
-with tf.Session() as sess:
-    sess.run(init)
-    step = 1
-    # Keep training until reach max iterations
-    while step * batch_size < training_iters:
-        batch_x, batch_y = mnist.train.next_batch(batch_size)
-        test_x = mnist.test.images[:256]
+    # Launch the graph
+    acc = 0
+    testAcc = 0
+    with tf.Session() as sess:
+        sess.run(init)
+        step = 1
+        # Keep training until reach max iterations
+        while step * batch_size < training_iters:
+            batch_x, batch_y = mnist.train.next_batch(batch_size)
+            test_x = mnist.test.images[:256]
 
-        t0 = time.time()
-        batch_x = pixel_averaging.batch_interleave(batch_x, decomp_hash)
-        test_x = pixel_averaging.batch_interleave(test_x, decomp_hash)
-        t1 = time.time()
+            t0 = time.time()
+            batch_x = pixel_averaging.batch_interleave(batch_x, decomp_hash)
+            test_x = pixel_averaging.batch_interleave(test_x, decomp_hash)
+            t1 = time.time()
 
-        # Run optimization op (backprop)
-        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
-                                       keep_prob: dropout})
-        if step % display_step == 0:
-            # Calculate batch loss and accuracy
-            loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
-                                                              y: batch_y,
-                                                              keep_prob: 1.})
-            layer0_weights = sess.run([w0])
-            testAcc = sess.run(accuracy, feed_dict={x: test_x,
-                                      y: mnist.test.labels[:256],
-                                      keep_prob: 1.})
-            #print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
-            #      "{:.5f}".format(acc) + ", Test Acc.= "+ \
-            #      "{:.5f}".format(testAcc))
-            #print("\t", layer0_weights)
-        step += 1
-    print("Optimization Finished! (Sigma, TrainAcc):", Sigma, "\t", acc)
+            # Run optimization op (backprop)
+            sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
+                                           keep_prob: dropout})
+            if step % display_step == 0:
+                # Calculate batch loss and accuracy
+                loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
+                                                                  y: batch_y,
+                                                                  keep_prob: 1.})
+                layer0_weights = sess.run([w0])
+                testAcc = sess.run(accuracy, feed_dict={x: test_x,
+                                          y: mnist.test.labels[:256],
+                                          keep_prob: 1.})
+                #print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
+                #      "{:.5f}".format(acc) + ", Test Acc.= "+ \
+                #      "{:.5f}".format(testAcc))
+                #print("\t", layer0_weights)
+            step += 1
+        print("Optimization Finished! (Sigma, TrainAcc):", Sigma, "\t", acc)
+    return acc
+
+def vary_sigmas():
+    weight0_stdevs = [0.0, 0.001, 0.01, 0.1, 1.0]
+    accuracies = []
+    for sigma in weight0_stdevs:
+        acc = initialize_NN_and_train(sigma)
+        accuracies.append(acc)
+        print("\n\n\n ******************* \n\n\n")
+
+    print("Sigmas:", weight0_stdevs)
+    print("Training accuracies:", accuracies)
+    print("Max_iters:", training_iters)
+
+
+vary_sigmas()
 
 
 
