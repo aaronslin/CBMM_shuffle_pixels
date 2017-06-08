@@ -11,6 +11,7 @@ from __future__ import print_function
 import pixel_averaging
 import sys
 import time
+import argparse
 
 import tensorflow as tf
 
@@ -23,6 +24,13 @@ learning_rate = 0.001
 training_iters = 200000
 batch_size = 128
 display_step = 10
+
+
+# Varied parameters
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--layer0_sigma", default=0.0)
+sigma = float(parser.parse_args().layer0_sigma)
+print("Sigma:", sigma)
 
 # Aaron's add-ons
 decomp_hash = pixel_averaging.generate_rand_grid()
@@ -96,7 +104,7 @@ def conv_interleave(x, weights, biases, dropout):
 # Store layers weight & bias
 weights = {
     # 2x1 conv, 1 input, 8 outputs (8 is arbitrary)
-    'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8], mean=1.0, stddev=1.0)),
+    'wc0': tf.Variable(tf.random_normal([2, 1, 1, 8], mean=1.0, stddev=sigma)),
     # 5x5 conv, 8 input, 32 outputs
     'wc1': tf.Variable(tf.random_normal([5, 5, 8, 32])),
     # 5x5 conv, 32 inputs, 64 outputs
@@ -130,6 +138,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.initialize_all_variables()
 
 # Launch the graph
+acc = 0
+testAcc = 0
 with tf.Session() as sess:
     sess.run(init)
     step = 1
@@ -155,18 +165,12 @@ with tf.Session() as sess:
             testAcc = sess.run(accuracy, feed_dict={x: test_x,
                                       y: mnist.test.labels[:256],
                                       keep_prob: 1.})
-            print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
-                  "{:.5f}".format(acc) + ", Test Acc.= "+ \
-                  "{:.5f}".format(testAcc))
-            print("\t", layer0_weights)
+            #print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
+            #      "{:.5f}".format(acc) + ", Test Acc.= "+ \
+            #      "{:.5f}".format(testAcc))
+            #print("\t", layer0_weights)
         step += 1
-    print("Optimization Finished!")
-
-    # Calculate accuracy for 256 mnist test images
-    print("Testing Accuracy:", \
-        sess.run(accuracy, feed_dict={x: mnist.test.images[:256],
-                                      y: mnist.test.labels[:256],
-                                      keep_prob: 1.}))
+    print("Optimization Finished! (Sigma, TrainAcc):", Sigma, "\t", acc)
 
 
 
