@@ -1,4 +1,5 @@
 import numpy as np
+import unittest
 
 
 # Generator functions
@@ -20,7 +21,7 @@ def _check_shuffle_map(map, logDim):
 		return False
 	pass
 
-def _coord_map(paneSize, x,y, outMap, inMap):
+def _coord_map(paneSize, x, y, outMap, inMap):
 	xq, xr = (x // paneSize, x % paneSize)
 	yq, yr = (y // paneSize, y % paneSize)
 
@@ -38,7 +39,7 @@ def _shuffle_out(image, logDim, logPanes, outMap):
 def _shuffle_in(image, logDim, logPanes, inMap):
 	pass
 
-def shuffle(image, logDim, logPanes, inShuffleMap=None, outShuffleMap=None):
+def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 	# Input: 32x32 image; 5 = log(32); 1; None, a 2x2 permutation image
 	# Output: the 32x32 is split into four 16x16 panes
 	# 		(four = (2^logPanes)^2)
@@ -49,5 +50,34 @@ def shuffle(image, logDim, logPanes, inShuffleMap=None, outShuffleMap=None):
 		image = _shuffle_in(image, logDim, logPanes, inShuffleMap)
 
 	return image 
+
+
+
+# Unit Tests
+class TestCoord(unittest.TestCase):
+	def test_coord_map_trivial(self):
+		paneSize = 16
+		(x,y) = (17,18)
+		outMap = np.array([(0,0), (0,1), (1,0), (1,1)]).reshape((2,2,-1))
+		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
+		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (x,y))
+
+	def test_coord_map_out(self):
+		paneSize = 16
+		(x,y) = (17,18)
+		outMap = np.array([(0,1), (1,0), (1,1), (0,0)]).reshape((2,2,-1))
+		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
+		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (1,2))
+
+if __name__ == '__main__':
+	unittest.main()
+
+
+
+
+
+
+
+
 
 
