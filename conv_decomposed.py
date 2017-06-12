@@ -166,16 +166,17 @@ def initialize_NN_and_train(sigma):
                 testAcc = sess.run(accuracy, feed_dict={x: test_x,
                                           y: mnist.test.labels[:256],
                                           keep_prob: 1.})
-                #print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
-                #      "{:.5f}".format(acc) + ", Test Acc.= "+ \
-                #      "{:.5f}".format(testAcc))
+                print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
+                      "{:.5f}".format(acc) + ", Test Acc.= "+ \
+                      "{:.5f}".format(testAcc))
                 #print("\t", layer0_weights)
             step += 1
-        print("Optimization Finished! (Sigma, TrainAcc):", Sigma, "\t", acc)
+        print("Optimization Finished! (Sigma, TrainAcc):", sigma, "\t", acc)
     return acc
 
 def vary_sigmas():
-    weight0_stdevs = [0.0, 0.001, 0.01, 0.1, 1.0]
+    #weight0_stdevs = [0.0, 0.001, 0.01, 0.1, 1.0]
+    weight0_stdevs = [0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1.0]
     accuracies = []
     for sigma in weight0_stdevs:
         acc = initialize_NN_and_train(sigma)

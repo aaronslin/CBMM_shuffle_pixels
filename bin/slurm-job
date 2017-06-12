@@ -11,4 +11,4 @@ source ${MODULESHOME}/init/bash
 
 module add openmind/singularity/2.2.1
 
-singularity exec --bind /om:/om py35-tf.img python -c 'from digits import example; example.softmax_digits();'
+singularity exec --bind /om:/om /om/user/aaronlin/py35-tf.img python conv_decomposed.py 
