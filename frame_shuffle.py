@@ -1,13 +1,22 @@
 import numpy as np
 import unittest
+import math
 
 
 # Generator functions
-def pow2_dimensions(image):
+def pow2_dimensions(image, pad_values=(0,0)):
 	# Takes an input image (e.g. MNIST: 28 x 28)
 	# Returns image with power-of-2 dimensions (32 x 32)
+	if image.shape[0] != image.shape[1]:
+		print "Error: Input image is not a square"
+	original_n = image.shape[0]
+	desired_n = int(math.pow(2, math.ceil(math.log(original_n, 2))))
+	diff = desired_n - original_n
 
-	pass
+	pad = (diff/2, diff/2)
+	if diff % 2 == 1:
+		pad = ((diff-1)/2, (diff+1)/2)
+	return np.pad(image, pad, "constant", constant_values=pad_values)
 
 def generate_shuffle_map(logDim):
 	pass
@@ -55,6 +64,17 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 
 # Unit Tests
 class TestCoord(unittest.TestCase):
+	def test_pow2_dimensions(self):
+		n = 6
+		m = 8
+		image = np.arange(n*n).reshape((n,n))
+		zeros = [[0]*m]
+
+		desired = [[j+n*i for j in range(n)] for i in range(n)]
+		desired = [[0]+sub+[0] for sub in desired]
+		desired = np.array(zeros + desired + zeros).reshape((m,m))
+		self.assertTrue((pow2_dimensions(image) == desired).all())
+
 	def test_coord_map_trivial(self):
 		paneSize = 16
 		(x,y) = (17,18)
