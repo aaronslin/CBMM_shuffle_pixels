@@ -1,6 +1,7 @@
 import numpy as np
 import unittest
 import math
+import random
 
 
 # Generator functions
@@ -19,9 +20,11 @@ def pow2_dimensions(image, pad_values=(0,0)):
 	return np.pad(image, pad, "constant", constant_values=pad_values)
 
 def generate_shuffle_map(logDim):
-	pass
+	dim = int(math.pow(2, logDim))
+	coords = [(x,y) for x in range(dim) for y in range(dim)]
+	random.shuffle(coords)
 
-
+	return np.array(coords).reshape((dim, dim, -1))
 
 # Shuffle functions 
 def _check_shuffle_map(map, logDim):
@@ -75,6 +78,11 @@ class TestCoord(unittest.TestCase):
 		desired = np.array(zeros + desired + zeros).reshape((m,m))
 		self.assertTrue((pow2_dimensions(image) == desired).all())
 
+	def test_generate_map_shape(self):
+		logDim = 3
+		map = generate_shuffle_map(logDim)
+		self.assertEqual(map.shape, (2**logDim, 2**logDim, 2))
+
 	def test_coord_map_trivial(self):
 		paneSize = 16
 		(x,y) = (17,18)
@@ -89,6 +97,8 @@ class TestCoord(unittest.TestCase):
 		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
 		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (1,2))
 
+
+# Testing 
 if __name__ == '__main__':
 	unittest.main()
 
