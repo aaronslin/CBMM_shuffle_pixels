@@ -9,7 +9,7 @@ def pow2_dimensions(image, pad_values=(0,0)):
 	# Takes an input image (e.g. MNIST: 28 x 28)
 	# Returns image with power-of-2 dimensions (32 x 32)
 	if image.shape[0] != image.shape[1]:
-		print "Error: Input image is not a square"
+		raise Exception("Error: Input image is not a square")
 	original_n = image.shape[0]
 	desired_n = int(math.pow(2, math.ceil(math.log(original_n, 2))))
 	diff = desired_n - original_n
@@ -27,12 +27,6 @@ def generate_shuffle_map(logDim):
 	return np.array(coords).reshape((dim, dim, -1))
 
 # Shuffle functions 
-def _check_shuffle_map(map, logDim):
-	# Given map, check that dimensions are (2^logDim) x (2^logDim)
-	if map is None:
-		return False
-	pass
-
 def _coord_map(paneSize, x, y, outMap, inMap):
 	xq, xr = (x // paneSize, x % paneSize)
 	yq, yr = (y // paneSize, y % paneSize)
@@ -42,28 +36,37 @@ def _coord_map(paneSize, x, y, outMap, inMap):
 
 	return (xq * paneSize + xr, yq * paneSize + yr)
 
-def _shuffle_out(image, logDim, logPanes, outMap):
+def _trivial_shuffle_map(dim):
+	coordinates = [(x,y) for x in range(dim) for y in range(dim)]
+	return np.array(coordinates).reshape((dim, dim, 2))
 
-
-	# map a tuple in (range(32), range(32)) -> 
-	pass
-
-def _shuffle_in(image, logDim, logPanes, inMap):
-	pass
+def _apply_image_map(image, map):
+	# Given an nxn image and an nxnx2 mapping, return the permutation
+	def apply_map(coord):
+		return image[coord[0]][coord[1]]
+	return np.apply_along_axis(apply_map, 2, map)
 
 def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 	# Input: 32x32 image; 5 = log(32); 1; None, a 2x2 permutation image
 	# Output: the 32x32 is split into four 16x16 panes
 	# 		(four = (2^logPanes)^2)
-	if _check_shuffle_map(outShuffleMap, logPanes):
-		image = _shuffle_out(image, logDim, logPanes, outShuffleMap)
+	dim = int(math.pow(2, logDim))
+	paneCount = int(math.pow(2, logPanes))
+	paneSize = dim/paneCount
 
-	if _check_shuffle_map(inShuffleMap, logDim - logPanes):
-		image = _shuffle_in(image, logDim, logPanes, inShuffleMap)
+	if image.shape[0]!=dim or image.shape[1]!=dim:
+		raise Exception("ERROR: logDim and image.shape don't match")
 
-	return image 
+	if outShuffleMap is None:
+		outShuffleMap = _trivial_shuffle_map(paneCount)
+	if inShuffleMap is None:
+		inShuffleMap = _trivial_shuffle_map(paneSize)
 
-
+	map = np.array([_coord_map(paneSize, x, y, outShuffleMap, inShuffleMap) \
+			for x in range(dim) for y in range(dim)]).reshape((dim, dim, -1))
+	
+	newImage = _apply_image_map(image, map)
+	return newImage 
 
 # Unit Tests
 class TestCoord(unittest.TestCase):
@@ -97,6 +100,30 @@ class TestCoord(unittest.TestCase):
 		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
 		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (1,2))
 
+	def test_image_map(self):
+		dim = 4
+		image = np.arange(dim*dim).reshape((dim, dim))
+		map = np.array([(x,y) for x in range(dim) for y in range(dim)]).reshape((dim, dim, -1))
+		equalMatrices = (image == _apply_image_map(image, map)).all()
+		self.assertTrue(equalMatrices)
+
+	def test_shuffle0(self):
+		logDim = 2
+		logPanes = 1
+		dim = 2**logDim
+		image = np.arange(dim*dim).reshape((dim,dim))
+		equalMatrices = (image == shuffle(image, logDim, logPanes)).all()
+		self.assertTrue(equalMatrices)
+
+	def test_shuffle1(self):
+		logDim = 2
+		logPanes = 1
+		dim = 2**logDim
+		image = np.arange(dim*dim).reshape((dim,dim))
+		outMap = np.array([[(0,0),(0,1)],[(1,1),(1,0)]])
+		output = np.array(range(8) + [10,11,8,9,14,15,12,13]).reshape((dim,dim))
+		equalMatrices = (output == shuffle(image, logDim, logPanes, outMap)).all()
+		self.assertTrue(equalMatrices)
 
 # Testing 
 if __name__ == '__main__':
