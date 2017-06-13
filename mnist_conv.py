@@ -8,8 +8,13 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 
 from __future__ import print_function
 
-PERMUTE_PIX = True
+MODE = "average"
+# Options: "average", "permute"
+
 import permute_pixels
+import pixel_averaging
+import sys
+import time
 
 import tensorflow as tf
 
@@ -23,8 +28,19 @@ training_iters = 200000
 batch_size = 128
 display_step = 10
 
+# Aaron's add-ons
+hash_avg = None
+avg_multiplier = 1
+if MODE == "average":
+    hash_avg = pixel_averaging.generate_rand_grid()
+    print("hash_avg:\n", hash_avg)
+    avg_multiplier = 2
+
 # Network Parameters
-n_input = 784 # MNIST data input (img shape: 28*28)
+n_rows = 28 * avg_multiplier
+n_cols = 28
+
+n_input = n_rows * n_cols # MNIST data input (img shape: 28*28)
 n_classes = 10 # MNIST total classes (0-9 digits)
 dropout = 0.75 # Dropout, probability to keep units
 
@@ -32,7 +48,6 @@ dropout = 0.75 # Dropout, probability to keep units
 x = tf.placeholder(tf.float32, [None, n_input])
 y = tf.placeholder(tf.float32, [None, n_classes])
 keep_prob = tf.placeholder(tf.float32) #dropout (keep probability)
-
 
 # Create some wrappers for simplicity
 def conv2d(x, W, b, strides=1):
@@ -50,29 +65,35 @@ def maxpool2d(x, k=2):
 
 # Create model
 def conv_net(x, weights, biases, dropout):
+    print()
+    print("***********************")
     # Reshape input picture
-    x = tf.reshape(x, shape=[-1, 28, 28, 1])
+    x = tf.reshape(x, shape=[-1, n_rows, n_cols, 1])
 
     # Convolution Layer
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
     conv1 = maxpool2d(conv1, k=2)
+    print("conv1", conv1.get_shape())
 
     # Convolution Layer
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
     conv2 = maxpool2d(conv2, k=2)
+    print("conv2", conv2.get_shape())
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
     fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
     fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
     fc1 = tf.nn.relu(fc1)
+    print("fc1", fc1.get_shape())
     # Apply Dropout
     fc1 = tf.nn.dropout(fc1, dropout)
 
     # Output, class prediction
     out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+    print("out", out.get_shape())
     return out
 
 # Store layers weight & bias
@@ -82,7 +103,7 @@ weights = {
     # 5x5 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
     # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([7*7*64*avg_multiplier, 1024])),
     # 1024 inputs, 10 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, n_classes]))
 }
@@ -115,8 +136,15 @@ with tf.Session() as sess:
     # Keep training until reach max iterations
     while step * batch_size < training_iters:
         batch_x, batch_y = mnist.train.next_batch(batch_size)
-        if PERMUTE_PIX:
+        test_x = mnist.test.images[:256]
+
+        if MODE == "permute":
             batch_x = permute_pixels.permute_batch(batch_x)
+        elif MODE == "average":
+            t0 = time.time()
+            batch_x = pixel_averaging.batch_interleave(batch_x, hash_avg)
+            test_x = pixel_averaging.batch_interleave(test_x, hash_avg)
+            t1 = time.time()
         # Run optimization op (backprop)
         sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
                                        keep_prob: dropout})
@@ -125,12 +153,13 @@ with tf.Session() as sess:
             loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
                                                               y: batch_y,
                                                               keep_prob: 1.})
-            testAcc = sess.run(accuracy, feed_dict={x: mnist.test.images[:256],
+            testAcc = sess.run(accuracy, feed_dict={x: test_x,
                                       y: mnist.test.labels[:256],
                                       keep_prob: 1.})
             print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
                   "{:.5f}".format(acc) + ", Test Acc.= "+ \
                   "{:.5f}".format(testAcc))
+            print("\t", t1-t0)
         step += 1
     print("Optimization Finished!")
 
