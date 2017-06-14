@@ -3,6 +3,13 @@ import unittest
 import math
 import random
 
+# Globals
+
+DATASET_SIZES = {
+	"mnist": (28, 28),
+	"cifar": (32, 32)
+}
+
 
 # Generator functions
 def pow2_dimensions(image, pad_values=(0,0)):
@@ -67,6 +74,18 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 	
 	newImage = _apply_image_map(image, map)
 	return newImage 
+
+# Batch processing methods
+def batch_shuffle(batch, dataset):
+	resized = np.apply_along_axis(_reshape_pad_unshape, 1, batch, dataset)
+	return resized
+
+def _reshape_pad_unshape(image, dataset):
+	dim = DATASET_SIZES[dataset]
+	image = image.reshape(dim)
+	image = pow2_dimensions(image)
+	image = image.reshape((image.size,))
+	return image
 
 # Unit Tests
 class TestCoord(unittest.TestCase):
