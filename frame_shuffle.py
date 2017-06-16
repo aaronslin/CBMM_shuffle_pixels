@@ -2,6 +2,7 @@ import numpy as np
 import unittest
 import math
 import random
+from itertools import product
 
 # Globals
 
@@ -12,6 +13,9 @@ DATASET_SIZES = {
 
 
 # Generator functions
+def _pow2(exponent):
+	return int(math.pow(2, exponent))
+
 def pow2_dimensions(image, pad_values=(0,0)):
 	# Takes an input image (e.g. MNIST: 28 x 28)
 	# Returns image with power-of-2 dimensions (32 x 32), and logDim
@@ -19,7 +23,7 @@ def pow2_dimensions(image, pad_values=(0,0)):
 		raise Exception("Error: Input image is not a square")
 	original_n = image.shape[0]
 	logDim = int(math.ceil(math.log(original_n, 2)))
-	desired_n = int(math.pow(2, logDim))
+	desired_n = _pow2(logDim)
 	diff = desired_n - original_n
 
 	pad = (diff/2, diff/2)
@@ -29,15 +33,21 @@ def pow2_dimensions(image, pad_values=(0,0)):
 
 	return paddedImage, logDim
 
-def generate_shuffle_map(logDim):
-	dim = int(math.pow(2, logDim))
+def _generate_one_shuffle_map(logSideLen):
+	dim = _pow2(logSideLen)
 	coords = [(x,y) for x in range(dim) for y in range(dim)]
 	random.shuffle(coords)
 
 	return np.array(coords).reshape((dim, dim, -1))
 
+def generate_outer_inner_maps(logDim, logPanes):
+	outerMap = _generate_one_shuffle_map(logPanes)
+	innerMap = _generate_one_shuffle_map(logDim-logPanes)
+	return outerMap, innerMap
+
 # Shuffle functions 
-def _coord_map(paneSize, x, y, outMap, inMap):
+def _coord_map(logPaneSize, x, y, outMap, inMap):
+	paneSize = _pow2(logPaneSize)
 	xq, xr = (x // paneSize, x % paneSize)
 	yq, yr = (y // paneSize, y % paneSize)
 
@@ -46,7 +56,8 @@ def _coord_map(paneSize, x, y, outMap, inMap):
 
 	return (xq * paneSize + xr, yq * paneSize + yr)
 
-def _trivial_shuffle_map(dim):
+def _trivial_shuffle_map(logDim):
+	dim = _pow2(logDim)
 	coordinates = [(x,y) for x in range(dim) for y in range(dim)]
 	return np.array(coordinates).reshape((dim, dim, 2))
 
@@ -60,23 +71,24 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 	# Input: 32x32 image; 5 = log(32); 1; None, a 2x2 permutation image
 	# Output: the 32x32 is split into four 16x16 panes
 	# 		(four = (2^logPanes)^2)
-	dim = int(math.pow(2, logDim))
-	paneCount = int(math.pow(2, logPanes))
-	paneSize = dim/paneCount
+	dim = _pow2(logDim)
+	logPaneSize = logDim - logPanes
 
 	if image.shape[0]!=dim or image.shape[1]!=dim:
 		raise Exception("ERROR: logDim and image.shape don't match")
 
 	if outShuffleMap is None:
-		outShuffleMap = _trivial_shuffle_map(paneCount)
+		outShuffleMap = _trivial_shuffle_map(logPanes)
 	if inShuffleMap is None:
-		inShuffleMap = _trivial_shuffle_map(paneSize)
+		inShuffleMap = _trivial_shuffle_map(logPaneSize)
 
-	map = np.array([_coord_map(paneSize, x, y, outShuffleMap, inShuffleMap) \
+	map = np.array([_coord_map(logPaneSize, x, y, outShuffleMap, inShuffleMap) \
 			for x in range(dim) for y in range(dim)]).reshape((dim, dim, -1))
 	
 	newImage = _apply_image_map(image, map)
 	return newImage 
+
+
 
 # Batch processing methods
 def batch_shuffle(batch, dataset):
@@ -105,22 +117,22 @@ class TestCoord(unittest.TestCase):
 
 	def test_generate_map_shape(self):
 		logDim = 3
-		map = generate_shuffle_map(logDim)
+		map = _generate_one_shuffle_map(logDim)
 		self.assertEqual(map.shape, (2**logDim, 2**logDim, 2))
 
 	def test_coord_map_trivial(self):
-		paneSize = 16
+		logPaneSize = 4
 		(x,y) = (17,18)
 		outMap = np.array([(0,0), (0,1), (1,0), (1,1)]).reshape((2,2,-1))
-		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
-		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (x,y))
+		inMap = np.array([[(i,j) for j in range(logPaneSize)] for i in range(logPaneSize)])
+		self.assertEqual(_coord_map(logPaneSize, x, y, outMap, inMap), (x,y))
 
 	def test_coord_map_out(self):
-		paneSize = 16
+		logPaneSize = 4
 		(x,y) = (17,18)
 		outMap = np.array([(0,1), (1,0), (1,1), (0,0)]).reshape((2,2,-1))
-		inMap = np.array([[(i,j) for j in range(paneSize)] for i in range(paneSize)])
-		self.assertEqual(_coord_map(paneSize, x, y, outMap, inMap), (1,2))
+		inMap = np.array([[(i,j) for j in range(logPaneSize)] for i in range(logPaneSize)])
+		self.assertEqual(_coord_map(logPaneSize, x, y, outMap, inMap), (1,2))
 
 	def test_image_map(self):
 		dim = 4
