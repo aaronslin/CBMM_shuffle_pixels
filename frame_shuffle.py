@@ -40,13 +40,13 @@ def _generate_one_shuffle_map(logSideLen):
 
 	return np.array(coords).reshape((dim, dim, -1))
 
-def generate_both_maps(logDim, logPanes, hasOuter, hasInner):
-	if hasOuter:
+def generate_both_maps(logDim, logPanes, hasOut, hasIn):
+	if hasOut:
 		outerMap = _generate_one_shuffle_map(logPanes)
 	else:
 		outerMap = _trivial_shuffle_map(logPanes)
 
-	if hasInner:	
+	if hasIn:	
 		innerMap = _generate_one_shuffle_map(logDim-logPanes)
 	else:
 		innerMap = _trivial_shuffle_map(logDim-logPanes)
@@ -98,15 +98,17 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 
 
 # Batch processing methods
-def batch_shuffle(batch, dataset):
-	resized = np.apply_along_axis(_reshape_pad_unshape, 1, batch, dataset)
+def batch_shuffle(batch, dataset, filename, logPanes, hasOut, hasIn):
+	image_dim = DATASET_SIZES[dataset]
+	(outMap, inMap) = read_shuffle_maps(filename, logPanes, hasOut, hasIn)
+	resized = np.apply_along_axis(_reshape_pad_shuffle_unshape, 1, batch, \
+					image_dim, logPanes, outMap, inMap)
 	return resized
 
-def _reshape_pad_unshape(image, dataset, logPanes, outShuffleMap, inShuffleMap):
-	dim = DATASET_SIZES[dataset]
-	image = image.reshape(dim)
+def _reshape_pad_shuffle_unshape(image, image_dim, logPanes, outMap, inMap):
+	image = image.reshape(image_dim)
 	image, logDim = pow2_dimensions(image)
-	newImage = shuffle(image, logDim, logPanes, outShuffleMap, inShuffleMap)
+	newImage = shuffle(image, logDim, logPanes, outMap, inMap)
 	newImage = newImage.reshape((image.size,))
 	return newImage
 
@@ -118,6 +120,10 @@ def save_shuffle_maps(filename, logDim):
 		bothMaps = generate_both_maps(logDim, logPanes, hasOut, hasIn)
 		maps_dict[key] = bothMaps
 	np.save(filename, maps_dict)
+
+def read_shuffle_maps(filename, logPanes, hasOut, hasIn):
+	maps_dict = np.load(filename).item()
+	return maps_dict[(logPanes, hasOut, hasIn)]
 
 
 
