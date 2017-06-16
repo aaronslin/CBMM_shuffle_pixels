@@ -40,9 +40,16 @@ def _generate_one_shuffle_map(logSideLen):
 
 	return np.array(coords).reshape((dim, dim, -1))
 
-def generate_outer_inner_maps(logDim, logPanes):
-	outerMap = _generate_one_shuffle_map(logPanes)
-	innerMap = _generate_one_shuffle_map(logDim-logPanes)
+def generate_both_maps(logDim, logPanes, hasOuter, hasInner):
+	if hasOuter:
+		outerMap = _generate_one_shuffle_map(logPanes)
+	else:
+		outerMap = _trivial_shuffle_map(logPanes)
+
+	if hasInner:	
+		innerMap = _generate_one_shuffle_map(logDim-logPanes)
+	else:
+		innerMap = _trivial_shuffle_map(logDim-logPanes)
 	return outerMap, innerMap
 
 # Shuffle functions 
@@ -95,12 +102,24 @@ def batch_shuffle(batch, dataset):
 	resized = np.apply_along_axis(_reshape_pad_unshape, 1, batch, dataset)
 	return resized
 
-def _reshape_pad_unshape(image, dataset):
+def _reshape_pad_unshape(image, dataset, logPanes, outShuffleMap, inShuffleMap):
 	dim = DATASET_SIZES[dataset]
 	image = image.reshape(dim)
 	image, logDim = pow2_dimensions(image)
-	image = image.reshape((image.size,))
-	return image
+	newImage = shuffle(image, logDim, logPanes, outShuffleMap, inShuffleMap)
+	newImage = newImage.reshape((image.size,))
+	return newImage
+
+def save_shuffle_maps(filename, logDim):
+	maps_dict = {}
+	bools = [True, False]
+	for logPanes, hasOut, hasIn in product(range(1, logDim), bools, bools):
+		key = (logPanes, hasOut, hasIn)
+		bothMaps = generate_both_maps(logDim, logPanes, hasOut, hasIn)
+		maps_dict[key] = bothMaps
+	np.save(filename, maps_dict)
+
+
 
 # Unit Tests
 class TestCoord(unittest.TestCase):
