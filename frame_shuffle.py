@@ -14,17 +14,20 @@ DATASET_SIZES = {
 # Generator functions
 def pow2_dimensions(image, pad_values=(0,0)):
 	# Takes an input image (e.g. MNIST: 28 x 28)
-	# Returns image with power-of-2 dimensions (32 x 32)
+	# Returns image with power-of-2 dimensions (32 x 32), and logDim
 	if image.shape[0] != image.shape[1]:
 		raise Exception("Error: Input image is not a square")
 	original_n = image.shape[0]
-	desired_n = int(math.pow(2, math.ceil(math.log(original_n, 2))))
+	logDim = int(math.ceil(math.log(original_n, 2)))
+	desired_n = int(math.pow(2, logDim))
 	diff = desired_n - original_n
 
 	pad = (diff/2, diff/2)
 	if diff % 2 == 1:
 		pad = ((diff-1)/2, (diff+1)/2)
-	return np.pad(image, pad, "constant", constant_values=pad_values)
+	paddedImage = np.pad(image, pad, "constant", constant_values=pad_values)
+
+	return paddedImage, logDim
 
 def generate_shuffle_map(logDim):
 	dim = int(math.pow(2, logDim))
@@ -83,7 +86,7 @@ def batch_shuffle(batch, dataset):
 def _reshape_pad_unshape(image, dataset):
 	dim = DATASET_SIZES[dataset]
 	image = image.reshape(dim)
-	image = pow2_dimensions(image)
+	image, logDim = pow2_dimensions(image)
 	image = image.reshape((image.size,))
 	return image
 
@@ -98,7 +101,7 @@ class TestCoord(unittest.TestCase):
 		desired = [[j+n*i for j in range(n)] for i in range(n)]
 		desired = [[0]+sub+[0] for sub in desired]
 		desired = np.array(zeros + desired + zeros).reshape((m,m))
-		self.assertTrue((pow2_dimensions(image) == desired).all())
+		self.assertTrue((pow2_dimensions(image)[0] == desired).all())
 
 	def test_generate_map_shape(self):
 		logDim = 3
