@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#SBATCH --job-name=softmax_digits
-#SBATCH --output digits.out
+#SBATCH --job-name=shuffle_pixels
+#SBATCH --output output_shuffle.out
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:1
 
@@ -11,4 +11,4 @@ source ${MODULESHOME}/init/bash
 
 module add openmind/singularity/2.2.1
 
-singularity exec --bind /om:/om /om/user/aaronlin/py35-tf.img python conv_decomposed.py 
+singularity exec --bind /om:/om /om/user/aaronlin/py35-tf.img python conv_shuffle.py
