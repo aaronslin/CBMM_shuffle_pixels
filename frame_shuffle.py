@@ -26,7 +26,7 @@ def pow2_dimensions(image, pad_values=(0,0)):
 	desired_n = _pow2(logDim)
 	diff = desired_n - original_n
 
-	pad = (diff/2, diff/2)
+	pad = (diff//2, diff//2)
 	if diff % 2 == 1:
 		pad = ((diff-1)/2, (diff+1)/2)
 	paddedImage = np.pad(image, pad, "constant", constant_values=pad_values)
