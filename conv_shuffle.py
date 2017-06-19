@@ -9,6 +9,7 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 import tensorflow as tf
 import frame_shuffle
 from itertools import product
+import time
 
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
@@ -85,7 +86,7 @@ weights = {
 	# 5x5 conv, 32 inputs, 64 outputs
 	'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
 	# fully connected, 7*7*64 inputs, 1024 outputs
-	'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
+	'wd1': tf.Variable(tf.random_normal([(image_len/4*image_len/4)*64, 1024])),
 	# 1024 inputs, 10 outputs (class prediction)
 	'out': tf.Variable(tf.random_normal([1024, n_classes]))
 }
@@ -112,6 +113,9 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 init = tf.initialize_all_variables()
 
 def train_model(logPanes, hasOut, hasIn):
+	def process_images(batch):
+		return frame_shuffle.batch_shuffle(batch, \
+						THE_DATASET, FILENAME_MAP, logPanes, hasOut, hasIn)
 	# Launch the graph
 	acc = 0
 	testAcc = 0
@@ -121,18 +125,19 @@ def train_model(logPanes, hasOut, hasIn):
 		# Keep training until reach max iterations
 		while step * batch_size < training_iters:
 			batch_x, batch_y = mnist.train.next_batch(batch_size)
-			batch_x = frame_shuffle.batch_shuffle(batch_x, \
-						THE_DATASET, FILENAME_MAP, logPanes, hasOut, hasIn)
+			batch_x = process_images(batch_x)
 
 			# Run optimization op (backprop)
 			sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
 										   keep_prob: dropout})
+			
 			if step % display_step == 0:
 				# Calculate batch loss and accuracy
 				loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
 																  y: batch_y,
 																  keep_prob: 1.})
-				testAcc = sess.run(accuracy, feed_dict={x: mnist.test.images[:256],
+				testBatch_x = process_images(mnist.test.images[:256])
+				testAcc = sess.run(accuracy, feed_dict={x: testBatch_x,
 										  y: mnist.test.labels[:256],
 										  keep_prob: 1.})
 				print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
