@@ -11,7 +11,6 @@ DATASET_SIZES = {
 	"cifar": (32, 32)
 }
 
-
 # Generator functions
 def _pow2(exponent):
 	return int(math.pow(2, exponent))
@@ -98,9 +97,9 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 
 
 # Batch processing methods
-def batch_shuffle(batch, dataset, filename, logPanes, hasOut, hasIn):
+def batch_shuffle(batch, dataset, mapsDict, logPanes, hasOut, hasIn):
 	image_dim = DATASET_SIZES[dataset]
-	(outMap, inMap) = read_shuffle_maps(filename, logPanes, hasOut, hasIn)
+	(outMap, inMap) = read_shuffle_maps(mapsDict, logPanes, hasOut, hasIn)
 	resized = np.apply_along_axis(_reshape_pad_shuffle_unshape, 1, batch, \
 					image_dim, logPanes, outMap, inMap)
 	return resized
@@ -121,9 +120,8 @@ def save_shuffle_maps(filename, logDim):
 		maps_dict[key] = bothMaps
 	np.save(filename, maps_dict)
 
-def read_shuffle_maps(filename, logPanes, hasOut, hasIn):
-	maps_dict = np.load(filename).item()
-	return maps_dict[(logPanes, hasOut, hasIn)]
+def read_shuffle_maps(mapsDict, logPanes, hasOut, hasIn):	
+	return mapsDict[(logPanes, hasOut, hasIn)]
 
 
 

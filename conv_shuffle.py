@@ -6,15 +6,24 @@ Author: Aymeric Damien
 Project: https://github.com/aymericdamien/TensorFlow-Examples/
 '''
 
+import numpy as np
 import tensorflow as tf
 import frame_shuffle
 from itertools import product
 import time
 
+def load_maps(filename):
+	mapsDict = np.load(filename).item()
+	print(mapsDict)
+	return mapsDict
+
+
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
-FILENAME_MAP = "shuffle_maps.npy"
+FILENAME_MAP = "/home/aaronlin/shuffle_maps.npy"
 LOGDIM = 5
+MAPS_DICT = load_maps(FILENAME_MAP)
+
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -115,7 +124,7 @@ init = tf.initialize_all_variables()
 def train_model(logPanes, hasOut, hasIn):
 	def process_images(batch):
 		return frame_shuffle.batch_shuffle(batch, \
-						THE_DATASET, FILENAME_MAP, logPanes, hasOut, hasIn)
+						THE_DATASET, MAPS_DICT, logPanes, hasOut, hasIn)
 	# Launch the graph
 	acc = 0
 	testAcc = 0
