@@ -17,8 +17,6 @@ def load_maps(filename):
 	mapsDict = np.load(filename).item()
 	return mapsDict
 
-	
-
 
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
@@ -30,7 +28,7 @@ def taskNum_to_params1(taskNum):
 	# output: (logPanes, hasOut, hasIn) \in (1-LOGDIM, 0-1, 0-1)
 	logPanes = (taskNum % LOGDIM) + 1
 	hasOut = (taskNum % 2) == 1
-	hasIn = (taskNum % 4) < 2
+	hasIn = (taskNum % 4) > 1
 	return (logPanes, hasOut, hasIn)
 
 def get_filename_dir(isOM):
