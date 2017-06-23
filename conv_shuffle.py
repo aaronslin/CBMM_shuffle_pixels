@@ -23,7 +23,6 @@ def load_maps(filename):
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
 LOGDIM = 5
-MAPS_DICT = load_maps(FILENAME_MAP)
 
 # Varied parameters
 def taskNum_to_params1(taskNum):
@@ -48,6 +47,7 @@ print("Parameters:", taskParams)
 parser.add_argument("-o", "--openmind", default=1)
 isOpenmind = int(parser.parse_args().openmind)
 FILENAME_MAP = get_filename_dir(isOpenmind)
+MAPS_DICT = load_maps(FILENAME_MAP)
 
 
 # Import MNIST data
