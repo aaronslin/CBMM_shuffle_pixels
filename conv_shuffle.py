@@ -11,11 +11,13 @@ import tensorflow as tf
 import frame_shuffle
 from itertools import product
 import time
+import argparse
 
 def load_maps(filename):
 	mapsDict = np.load(filename).item()
-	print(mapsDict)
 	return mapsDict
+
+	
 
 
 # Flags from frame_shuffle
@@ -24,6 +26,20 @@ FILENAME_MAP = "/home/aaronlin/shuffle_maps.npy"
 LOGDIM = 5
 MAPS_DICT = load_maps(FILENAME_MAP)
 
+# Varied parameters
+def taskNum_to_params1(taskNum):
+	# input:  taskNum from 0 to 19
+	# output: (logPanes, hasOut, hasIn) \in (1-LOGDIM, 0-1, 0-1)
+	logPanes = (taskNum % LOGDIM) + 1
+	hasOut = (taskNum % 2) == 1
+	hasIn = (taskNum % 4) < 2
+	return (logPanes, hasOut, hasIn)
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-s", "--slurm_task_num", default=0)
+taskNum = int(parser.parse_args().slurm_task_num)
+taskParams = taskNum_to_params1(taskNum)
+print("Parameters:", taskParams)
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
@@ -159,15 +175,18 @@ def train_model(logPanes, hasOut, hasIn):
 def vary_parameters():
 	bools = [True, False]
 	for logPanes, hasOut, hasIn in product(range(1, LOGDIM), bools, bools):
-		print("#####################  NEW  ITERATION #####################")
-		print("Parameters (logPanes, hasOut, hasIn): ", (logPanes, hasOut, hasIn))
-		acc, testAcc = train_model(logPanes, hasOut, hasIn)
-		print("\n(acc, testAcc):", (acc, testAcc))
-		print("\n\n\n\n\n")
+		train_given_parameters((logPanes, hasOut, hasIn))		
+
+def train_given_parameters(params = taskParams):
+	(logPanes, hasOut, hasIn) = params
+	print("#####################  NEW  ITERATION #####################")
+	print("Parameters (logPanes, hasOut, hasIn): ", (logPanes, hasOut, hasIn))
+	acc, testAcc = train_model(logPanes, hasOut, hasIn)
+	print("\n(acc, testAcc):", (acc, testAcc))
+	print("\n\n\n\n\n")
 
 if __name__ == "__main__":
-	vary_parameters()
-
+	train_given_parameters()
 
 
 
