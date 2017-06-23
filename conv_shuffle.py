@@ -20,7 +20,6 @@ def load_maps(filename):
 
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
-FILENAME_MAP = "shuffle_maps.npy"
 LOGDIM = 5
 MAPS_DICT = load_maps(FILENAME_MAP)
 
@@ -33,11 +32,21 @@ def taskNum_to_params1(taskNum):
 	hasIn = (taskNum % 4) > 1
 	return (logPanes, hasOut, hasIn)
 
+def get_filename_dir(isOM):
+	if isOM:
+		return "/home/aaronlin/shuffle_maps.npy"
+	return "shuffle_maps.npy"
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0)
 taskNum = int(parser.parse_args().slurm_task_num)
 taskParams = taskNum_to_params1(taskNum)
 print("Parameters:", taskParams)
+
+parser.add_argument("-o", "--openmind", default=1)
+isOpenmind = int(parser.parse_args().openmind)
+FILENAME_MAP = get_filename_dir(isOpenmind)
+
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
