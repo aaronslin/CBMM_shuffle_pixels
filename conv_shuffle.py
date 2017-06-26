@@ -159,10 +159,7 @@ def train_model(logPanes, hasOut, hasIn):
 		# Keep training until reach max iterations
 		while step * batch_size < training_iters:
 			batch_x, batch_y = mnist.train.next_batch(batch_size)
-			orig = batch_x[0].reshape((28, 28))
 			batch_x = process_images(batch_x)
-			modif = batch_x[0].reshape((image_len, image_len))
-			disp([orig, modif])
 
 			# Run optimization op (backprop)
 			sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
@@ -217,9 +214,7 @@ def view_shuffled_images():
 		disp(modifs, params)
 
 if __name__ == "__main__":
-	#train_given_parameters((1, True, False))
-	view_shuffled_images()
-
-
+	train_given_parameters()
+	#view_shuffled_images()
 
 
