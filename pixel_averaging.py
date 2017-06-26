@@ -8,13 +8,23 @@ def load_img(path):
 	raw = cv2.imread(path, 0)
 	return cv2.resize(raw, MNIST_DIMENSIONS)
 
-def disp(images, name=0):
+def disp(images, names=0):
+	x_shift = 100
+	y_shift = 25
 	if type(images) == type([]):
-		for img in images:
+		if names is 0:
+			names = range(len(images))
+
+		const_y = 25
+		for (img, name) in zip(images, names):
 			cv2.imshow(str(name),img)
-			name = name+1
+			cv2.moveWindow(str(name), x_shift, y_shift)
+			#cv2.moveWindow(str(name), x_shift + name[0]*200, \
+			#			y_shift - 4*(name[0]-1)*(const_y + img.shape[1]))
+
+			y_shift += img.shape[1] + const_y
 	elif type(images) == type(np.array([])):
-		cv2.imshow(str(name), images)
+		cv2.imshow(str(names), images)
 	else:
 		return
 	cv2.waitKey(0)
