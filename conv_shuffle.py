@@ -40,12 +40,14 @@ def get_filename_dir(isOM):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0)
-taskNum = int(parser.parse_args().slurm_task_num)
+parser.add_argument("-o", "--openmind", default=1)
+args = parser.parse_args()
+
+taskNum = int(args.slurm_task_num)
 taskParams = taskNum_to_params1(taskNum)
 print("Parameters:", taskParams)
 
-parser.add_argument("-o", "--openmind", default=1)
-isOpenmind = int(parser.parse_args().openmind)
+isOpenmind = int(args.openmind)
 FILENAME_MAP = get_filename_dir(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
 
