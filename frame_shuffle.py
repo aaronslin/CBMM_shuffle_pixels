@@ -114,7 +114,7 @@ def _reshape_pad_shuffle_unshape(image, image_dim, logPanes, outMap, inMap):
 def save_shuffle_maps(filename, logDim):
 	maps_dict = {}
 	bools = [True, False]
-	for logPanes, hasOut, hasIn in product(range(1, logDim), bools, bools):
+	for logPanes, hasOut, hasIn in product(range(1, logDim+1), bools, bools):
 		key = (logPanes, hasOut, hasIn)
 		bothMaps = generate_both_maps(logDim, logPanes, hasOut, hasIn)
 		maps_dict[key] = bothMaps

@@ -21,7 +21,6 @@ def load_maps(filename):
 # Flags from frame_shuffle
 THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
 LOGDIM = 5
-MAPS_DICT = load_maps(FILENAME_MAP)
 
 # Varied parameters
 def taskNum_to_params1(taskNum):
@@ -39,13 +38,16 @@ def get_filename_dir(isOM):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0)
-taskNum = int(parser.parse_args().slurm_task_num)
+parser.add_argument("-o", "--openmind", default=1)
+args = parser.parse_args()
+
+taskNum = int(args.slurm_task_num)
 taskParams = taskNum_to_params1(taskNum)
 print("Parameters:", taskParams)
 
-parser.add_argument("-o", "--openmind", default=1)
-isOpenmind = int(parser.parse_args().openmind)
+isOpenmind = int(args.openmind)
 FILENAME_MAP = get_filename_dir(isOpenmind)
+MAPS_DICT = load_maps(FILENAME_MAP)
 
 
 # Import MNIST data
@@ -192,9 +194,27 @@ def train_given_parameters(params = taskParams):
 	print("\n(acc, testAcc):", (acc, testAcc))
 	print("\n\n\n\n\n")
 
+def view_shuffled_images():
+	def process_images(batch, params):
+		(logPanes, hasOut, hasIn) = params
+		return frame_shuffle.batch_shuffle(batch, \
+						THE_DATASET, MAPS_DICT, logPanes, hasOut, hasIn)
+	from pixel_averaging import disp
+	temp_batch_size = 1
+	max_iters = 5
+	bools = [True, False]
+
+	for i in range(max_iters):
+		batch_x, batch_y = mnist.train.next_batch(temp_batch_size)
+
+		params = []
+		for logPanes, hasOut, hasIn in product(range(1, LOGDIM), bools, bools):
+			params.append((logPanes, hasOut, hasIn))
+		modifs = [process_images(batch_x, param)[0].reshape((32, 32)) for param in params]
+		disp(modifs, params)
+
 if __name__ == "__main__":
 	train_given_parameters()
-
-
+	#view_shuffled_images()
 
 
