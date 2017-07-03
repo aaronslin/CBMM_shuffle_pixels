@@ -115,10 +115,10 @@ def conv_net(x, weights, biases, dropout):
 
 # Store layers weight & bias
 weights = {
-	# 5x5 conv, 1 input, 32 outputs
-	'wc1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
-	# 5x5 conv, 32 inputs, 64 outputs
-	'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+	# 4x4 conv, 1 input, 32 outputs
+	'wc1': tf.Variable(tf.random_normal([4, 4, 1, 32])),
+	# 4x4 conv, 32 inputs, 64 outputs
+	'wc2': tf.Variable(tf.random_normal([4, 4, 32, 64])),
 	# fully connected, 7*7*64 inputs, 1024 outputs
 	'wd1': tf.Variable(tf.random_normal([int(image_len * image_len)*64, 1024])),
 	# 1024 inputs, 10 outputs (class prediction)
