@@ -12,6 +12,7 @@ import frame_shuffle
 from itertools import product
 import time
 import argparse
+import sys
 
 def load_maps(filename):
 	mapsDict = np.load(filename).item()
@@ -19,7 +20,7 @@ def load_maps(filename):
 
 
 # Flags from frame_shuffle
-THE_DATASET = "mnist"                       # "mnist", "cifar", "none"
+datasetSizes = frame_shuffle.DATASET_SIZES
 LOGDIM = 5
 
 # Varied parameters
@@ -37,17 +38,23 @@ def get_filename_dir(isOM):
 	return "shuffle_maps.npy"
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-s", "--slurm_task_num", default=0)
-parser.add_argument("-o", "--openmind", default=1)
+parser.add_argument("-s", "--slurm_task_num", default=0, type=int)
+parser.add_argument("-o", "--openmind", default=1, type=int)
+parser.add_argument("-d", "--dataset", default=None)
 args = parser.parse_args()
 
-taskNum = int(args.slurm_task_num)
+taskNum = args.slurm_task_num
 taskParams = taskNum_to_params1(taskNum)
 print("Parameters:", taskParams)
 
-isOpenmind = int(args.openmind)
+isOpenmind = args.openmind
 FILENAME_MAP = get_filename_dir(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
+
+THE_DATASET = args.dataset
+if THE_DATASET not in datasetSizes.keys():
+	print("Dataset not found:", THE_DATASET)
+	sys.exit(1)
 
 
 # Import MNIST data
