@@ -20,7 +20,6 @@ def load_maps(filename):
 
 
 # Flags from frame_shuffle
-datasetSizes = frame_shuffle.DATASET_SIZES
 LOGDIM = 5
 
 # Varied parameters
@@ -52,14 +51,9 @@ FILENAME_MAP = get_filename_dir(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
 
 THE_DATASET = args.dataset
-if THE_DATASET not in datasetSizes.keys():
+if THE_DATASET not in frame_shuffle.DATASET_SIZES.keys():
 	print("Dataset not found:", THE_DATASET)
 	sys.exit(1)
-
-
-# Import MNIST data
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
 # Parameters
 learning_rate = 0.001
@@ -67,6 +61,15 @@ training_iters = 200000
 batch_size = 128
 display_step = 10
 image_len = 32
+
+# Import MNIST data
+if THE_DATASET == "mnist":
+	from tensorflow.examples.tutorials.mnist import input_data
+	mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
+
+# Import CIFAR-10 data
+if THE_DATASET == "cifar":
+	import cifar
 
 # Network Parameters
 n_input = image_len * image_len # MNIST data input (img shape: 28*28)
@@ -153,6 +156,23 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.initialize_all_variables()
 
+def get_train_batch(dataset, batch_size):
+	if dataset == "mnist":
+		return mnist.train.next_batch(batch_size)
+	if dataset == "cifar":
+		return cifar.get_train_batch(batch_size)
+
+
+def get_test_batch(dataset, batch_size=256):
+	if dataset == "mnist":
+		x = mnist.test.images[:batch_size]
+		y = mnist.test.labels[:batch_size]
+		return x, y
+	if dataset == "cifar":
+		return cifar.get_test_batch(batch_size)
+
+
+
 def train_model(logPanes, hasOut, hasIn):
 	def process_images(batch):
 		return frame_shuffle.batch_shuffle(batch, \
@@ -165,7 +185,7 @@ def train_model(logPanes, hasOut, hasIn):
 		step = 1
 		# Keep training until reach max iterations
 		while step * batch_size < training_iters:
-			batch_x, batch_y = mnist.train.next_batch(batch_size)
+			batch_x, batch_y = get_train_batch(THE_DATASET, batch_size)
 			batch_x = process_images(batch_x)
 
 			# Run optimization op (backprop)
@@ -177,9 +197,10 @@ def train_model(logPanes, hasOut, hasIn):
 				loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
 																  y: batch_y,
 																  keep_prob: 1.})
-				testBatch_x = process_images(mnist.test.images[:256])
+				test_x, test_y = get_test_batch(THE_DATASET)
+				testBatch_x = process_images(test_x)
 				testAcc = sess.run(accuracy, feed_dict={x: testBatch_x,
-										  y: mnist.test.labels[:256],
+										  y: test_y,
 										  keep_prob: 1.})
 				print("Iter " + str(step*batch_size) + ", Training Accuracy= " + \
 					  "{:.5f}".format(acc) + ", Test Acc.= "+ \
