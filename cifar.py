@@ -2,6 +2,10 @@ import numpy as np
 from itertools import cycle
 from pixel_averaging import disp
 
+np.set_printoptions(threshold='nan')
+IMAGES = {}
+LABELS = {}
+
 def unpickle(file):
 	import cPickle
 	with open(file, 'rb') as fo:
@@ -26,12 +30,9 @@ def prepare_cifar(mode):
 
 	return cycle(images), cycle(labels)
 
-trainX, trainY = prepare_cifar("train")
-testX, testY = prepare_cifar("test")
-
 def bgr_ify(image):
 	interm = image.reshape((3, 32, 32))
-	interm = interm[::-1]		# default is rgb
+	interm = interm[::-1]		# converts rgb -> bgr
 	bgr = np.swapaxes(np.swapaxes(interm, 0, 2), 0, 1)
 	return bgr
 
@@ -43,23 +44,18 @@ def grayscale_flat(image):
 def one_hot(label, num_classes=10):
 	return (np.arange(num_classes) == label).astype(np.int32)
 
-def get_train_batch(batch_size):
+def get_next_batch(mode, batch_size):
 	X = []
 	Y = []
 	for _ in range(batch_size):
-		image = grayscale_flat(next(trainX))
-		label = one_hot(next(trainY))
+		image = grayscale_flat(next(IMAGES[mode]))
+		label = one_hot(next(LABELS[mode]))
 		X.append(image)
 		Y.append(label)
 	return np.array(X), np.array(Y)
 
-def get_test_batch(batch_size):
-	x = []
-	y = []
-	for _ in range(batch_size):
-		x.append(next(testX))
-		y.append(next(testY))
-	return np.array(x), np.array(y)
 
+for mode in ["train", "test"]:
+	IMAGES[mode], LABELS[mode] = prepare_cifar(mode)
 
 

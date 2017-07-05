@@ -160,7 +160,7 @@ def get_train_batch(dataset, batch_size):
 	if dataset == "mnist":
 		return mnist.train.next_batch(batch_size)
 	if dataset == "cifar":
-		return cifar.get_train_batch(batch_size)
+		return cifar.get_next_batch("train", batch_size)
 
 
 def get_test_batch(dataset, batch_size=256):
@@ -169,7 +169,7 @@ def get_test_batch(dataset, batch_size=256):
 		y = mnist.test.labels[:batch_size]
 		return x, y
 	if dataset == "cifar":
-		return cifar.get_test_batch(batch_size)
+		return cifar.get_next_batch("test", batch_size)
 
 
 
