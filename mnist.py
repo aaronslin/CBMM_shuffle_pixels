@@ -1,5 +1,8 @@
 from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
+import nn_architecture as nn
+
+CNN = nn.MNIST_Network
 
 def get_next_batch(mode, batch_size):
 	if mode == "train":

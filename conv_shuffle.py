@@ -43,21 +43,28 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0, type=int)
 parser.add_argument("-o", "--openmind", default=1, type=int)
 parser.add_argument("-d", "--dataset", default=None)
+parser.add_argument("-a", "--architecture", default=None)
 args = parser.parse_args()
 
+# Arg: Slurm task number
 taskNum = args.slurm_task_num
 taskParams = taskNum_to_params1(taskNum)
 print("Parameters:", taskParams)
 
+# Arg: Openmind usage
 isOpenmind = args.openmind
 FILENAME_MAP = get_filename_dir(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
 
+# Arg: Dataset name
 DATASET_NAME = args.dataset
 if DATASET_NAME not in frame_shuffle.DATASET_SIZES.keys():
 	print("Dataset not found:", DATASET_NAME)
 	sys.exit(1)
 DATASET = __import__(DATASET_NAME)
+
+# Arg: CNN Architecture name
+architecture_name = args.architecture
 
 # Parameters
 learning_rate = 0.001
@@ -71,7 +78,7 @@ dropout = 0.75
 
 
 # Construct model
-convNet = nn.MNIST_Network(**nn.PARAMS["mnist_5x5_nopool"])
+convNet = DATASET.CNN(**nn.PARAMS[architecture_name])
 
 x, y = convNet.get_placeholders()
 keep_prob = tf.placeholder(tf.float32)

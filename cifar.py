@@ -1,10 +1,12 @@
 import numpy as np
 from itertools import cycle
 from pixel_averaging import disp
+import nn_architecture as nn
 
 np.set_printoptions(threshold='nan')
 IMAGES = {}
 LABELS = {}
+CNN = nn.CIFAR_Network
 
 def unpickle(file):
 	import cPickle
