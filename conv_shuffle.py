@@ -58,7 +58,7 @@ try:
 except ImportError:
 	print("Dataset not found:", DATASET_NAME)
 	sys.exit(1)
-DATASET.init_om(isOpenMind)
+DATASET.init_om(isOpenmind)
 
 # Arg: CNN Architecture name
 architecture_name = args.architecture

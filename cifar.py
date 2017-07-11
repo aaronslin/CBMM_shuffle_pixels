@@ -3,7 +3,6 @@ from itertools import cycle
 from pixel_averaging import disp
 import nn_architecture as nn
 
-global isOM
 np.set_printoptions(threshold='nan')
 IMAGES = {}
 LABELS = {}
@@ -11,8 +10,9 @@ SIZE = (32, 32, 3)
 PADDED_SIZE = (32, 32, 3)
 CNN = nn.CIFAR_Network
 
-def init_om(om):
-	isOM = om
+def init_om(isOM):
+	for mode in ["train", "test"]:
+		IMAGES[mode], LABELS[mode] = prepare_cifar(mode, isOM)
 
 def unpickle(file):
 	import cPickle
@@ -20,7 +20,7 @@ def unpickle(file):
 		dict = cPickle.load(fo)
 	return dict
 
-def prepare_cifar(mode):
+def prepare_cifar(mode, isOM):
 	import os
 	import filename_paths
 	data_dir = filename_paths.get_cifar_images_path(isOM)
@@ -65,9 +65,5 @@ def get_next_batch(mode, batch_size):
 		X.append(image)
 		Y.append(label)
 	return np.array(X), np.array(Y)
-
-
-for mode in ["train", "test"]:
-	IMAGES[mode], LABELS[mode] = prepare_cifar(mode)
 
 
