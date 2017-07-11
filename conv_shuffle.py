@@ -51,6 +51,8 @@ isOpenmind = args.openmind
 FILENAME_MAP = filename_paths.get_shuffle_maps_path(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
 
+DATASET = __import__("cifar")
+
 # Arg: Dataset name
 DATASET_NAME = args.dataset
 try:
