@@ -14,8 +14,10 @@ def maxpool2d(x, k=2):
 # Architecture parameters
 
 PARAMS = {
+	"default": {},
 	"mnist_5x5_nopool": {"poolsize": 1},
-	"mnist_5x5_pool": {}
+	"mnist_5x5_pool": {},
+	"cifar_pool1": {"d1": 32, "d2": 64, "d3": 384, "d4": 192}
 }
 
 
@@ -110,6 +112,94 @@ class MNIST_Network(Network):
 			fc1 = tf.nn.relu(fc1)
 			# Apply Dropout
 			fc1 = tf.nn.dropout(fc1, keep_prob)
+
+			# Output, class prediction
+			out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+			return out
+		self.convnet = convnet
+
+class CIFAR_Network(Network):
+	def __init__(self, **kwargs):
+		super(CIFAR_Network, self).__init__()
+		self.set_params(**kwargs)
+
+		# MNIST settings
+		self.image_len = 32
+		self.n_input = self.image_len * self.image_len * 3
+		self.n_classes = 10
+
+		# Initializing network architecture
+		self.set_weights()
+		self.set_biases()
+		self.set_conv()
+
+	def predict(self, x, keep_prob):
+		return self.convnet(x)
+
+	def get_placeholders(self):
+		x = tf.placeholder(tf.float32, [None, self.n_input])
+		y = tf.placeholder(tf.float32, [None, self.n_classes])
+		return x, y
+
+	def set_params(self, **kwargs):
+		default = {
+			"d1": 32,
+			"d2": 64,
+			"d3": 384,
+			"d4": 192,
+			"kernel": 5,
+			"poolsize": 2
+		}
+		self.__dict__.update((k,v) for k,v in default.iteritems())
+		self.__dict__.update((k,v) for k,v in kwargs.iteritems() if k in default)
+
+
+	def set_weights(self):
+		width = self.image_len / (self.poolsize ** 3)
+		self.weights = {
+			'wc1': tf.Variable(tf.random_normal([self.kernel, self.kernel, 3, self.d1])),
+			'wc2': tf.Variable(tf.random_normal([self.kernel, self.kernel, self.d1, self.d2])),
+			'wc3': tf.Variable(tf.random_normal([self.kernel, self.kernel, self.d2, self.d3])),
+			# fully connected, 7*7*64 inputs, 1024 outputs
+			'wd1': tf.Variable(tf.random_normal([int(width * width) * self.d3, self.d4])),
+			# 1024 inputs, 10 outputs (class prediction)
+			'out': tf.Variable(tf.random_normal([self.d4, self.n_classes]))
+		}
+
+	def set_biases(self):
+		self.biases = {
+			'bc1': tf.Variable(tf.random_normal([self.d1])),
+			'bc2': tf.Variable(tf.random_normal([self.d2])),
+			'bc3': tf.Variable(tf.random_normal([self.d3])),
+			'bd1': tf.Variable(tf.random_normal([self.d4])),
+			'out': tf.Variable(tf.random_normal([self.n_classes]))
+		}
+
+	def set_conv(self):
+		weights = self.weights
+		biases = self.biases
+
+		def convnet(x):
+			# Reshape input picture
+			x = tf.reshape(x, shape=[-1, self.image_len, self.image_len, 3])
+
+			# Convolution Layer
+			conv1 = conv2d(x, weights['wc1'], biases['bc1'])
+			conv1 = maxpool2d(conv1, k=self.poolsize)
+
+			# Convolution Layer
+			conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+			conv2 = maxpool2d(conv2, k=self.poolsize)
+
+			# Convolution Layer
+			conv3 = conv2d(conv2, weights['wc3'], biases['bc3'])
+			conv3 = maxpool2d(conv3, k=self.poolsize)
+
+			# Fully connected layer
+			# Reshape conv3 output to fit fully connected layer input
+			fc1 = tf.reshape(conv3, [-1, weights['wd1'].get_shape().as_list()[0]])
+			fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
+			fc1 = tf.nn.relu(fc1)
 
 			# Output, class prediction
 			out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
