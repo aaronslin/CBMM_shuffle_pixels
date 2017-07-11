@@ -1,10 +1,18 @@
 from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 import nn_architecture as nn
+import filename_paths
+
+global isOM
+global mnist
 
 SIZE = (28, 28)
 PADDED_SIZE = (32, 32)
 CNN = nn.MNIST_Network
+
+def init_OM(om):
+	isOM = om
+	mnist_path = filename_paths.get_mnist_data_path(isOM)
+	mnist = input_data.read_data_sets(mnist_path, one_hot=True)
 
 def get_next_batch(mode, batch_size):
 	if mode == "train":

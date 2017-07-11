@@ -3,12 +3,16 @@ from itertools import cycle
 from pixel_averaging import disp
 import nn_architecture as nn
 
+global isOM
 np.set_printoptions(threshold='nan')
 IMAGES = {}
 LABELS = {}
 SIZE = (32, 32, 3)
 PADDED_SIZE = (32, 32, 3)
 CNN = nn.CIFAR_Network
+
+def init_om(om):
+	isOM = om
 
 def unpickle(file):
 	import cPickle
@@ -18,7 +22,8 @@ def unpickle(file):
 
 def prepare_cifar(mode):
 	import os
-	data_dir = "/tmp/cifar10_data"
+	import filename_paths
+	data_dir = filename_paths.get_cifar_images_path(isOM)
 
 	if mode == "train":
 		num_datafiles = 5

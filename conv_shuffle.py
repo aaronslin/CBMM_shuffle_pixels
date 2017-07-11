@@ -20,7 +20,7 @@ def load_maps(filename):
 
 import frame_shuffle
 import nn_architecture as nn
-
+import filename_paths
 
 # Flags from frame_shuffle
 LOGDIM = 5
@@ -33,11 +33,6 @@ def taskNum_to_params1(taskNum):
 	hasOut = (taskNum % 2) == 1
 	hasIn = (taskNum % 4) > 1
 	return (logPanes, hasOut, hasIn)
-
-def get_filename_dir(isOM):
-	if isOM:
-		return "/home/aaronlin/shuffle_maps.npy"
-	return "shuffle_maps.npy"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0, type=int)
@@ -53,16 +48,17 @@ print("Parameters:", taskParams)
 
 # Arg: Openmind usage
 isOpenmind = args.openmind
-FILENAME_MAP = get_filename_dir(isOpenmind)
+FILENAME_MAP = filename_paths.get_shuffle_maps_path(isOpenmind)
 MAPS_DICT = load_maps(FILENAME_MAP)
 
 # Arg: Dataset name
 DATASET_NAME = args.dataset
 try:
 	DATASET = __import__(DATASET_NAME)
-except:
+except ImportError:
 	print("Dataset not found:", DATASET_NAME)
 	sys.exit(1)
+DATASET.init_om(isOpenMind)
 
 # Arg: CNN Architecture name
 architecture_name = args.architecture
