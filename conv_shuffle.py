@@ -43,7 +43,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-s", "--slurm_task_num", default=0, type=int)
 parser.add_argument("-o", "--openmind", default=1, type=int)
 parser.add_argument("-d", "--dataset", default=None)
-parser.add_argument("-a", "--architecture", default=None)
+parser.add_argument("-a", "--architecture", default="default")
 args = parser.parse_args()
 
 # Arg: Slurm task number
@@ -58,10 +58,11 @@ MAPS_DICT = load_maps(FILENAME_MAP)
 
 # Arg: Dataset name
 DATASET_NAME = args.dataset
-if DATASET_NAME not in frame_shuffle.DATASET_SIZES.keys():
+try:
+	DATASET = __import__(DATASET_NAME)
+except:
 	print("Dataset not found:", DATASET_NAME)
 	sys.exit(1)
-DATASET = __import__(DATASET_NAME)
 
 # Arg: CNN Architecture name
 architecture_name = args.architecture
@@ -160,7 +161,8 @@ def view_shuffled_images():
 		params = []
 		for logPanes, hasOut, hasIn in product(range(1, LOGDIM), bools, bools):
 			params.append((logPanes, hasOut, hasIn))
-		modifs = [process_images(batch_x, param)[0].reshape((32, 32)) for param in params]
+		modifs = [process_images(batch_x, param)[0] \
+					.reshape(DATASET.PADDED_SIZE) for param in params]
 		disp(modifs, params)
 
 if __name__ == "__main__":

@@ -4,13 +4,6 @@ import math
 import random
 from itertools import product
 
-# Globals
-
-DATASET_SIZES = {
-	"mnist": (28, 28),
-	"cifar": (32, 32)
-}
-
 # Generator functions
 def _pow2(exponent):
 	return int(math.pow(2, exponent))
@@ -98,7 +91,8 @@ def shuffle(image, logDim, logPanes, outShuffleMap=None, inShuffleMap=None):
 
 # Batch processing methods
 def batch_shuffle(batch, dataset, mapsDict, logPanes, hasOut, hasIn):
-	image_dim = DATASET_SIZES[dataset]
+	DATASET = __import__(dataset)
+	image_dim = DATASET.SIZE
 	(outMap, inMap) = read_shuffle_maps(mapsDict, logPanes, hasOut, hasIn)
 	resized = np.apply_along_axis(_reshape_pad_shuffle_unshape, 1, batch, \
 					image_dim, logPanes, outMap, inMap)

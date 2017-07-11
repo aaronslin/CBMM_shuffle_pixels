@@ -6,6 +6,8 @@ import nn_architecture as nn
 np.set_printoptions(threshold='nan')
 IMAGES = {}
 LABELS = {}
+SIZE = (32, 32, 3)
+PADDED_SIZE = (32, 32, 3)
 CNN = nn.CIFAR_Network
 
 def unpickle(file):
@@ -43,6 +45,9 @@ def grayscale_flat(image):
 	gray = np.dot(bgr, [0.114, 0.587, 0.299]) / 256
 	return gray.reshape((-1,))
 
+def bgr_flat(image):
+	return bgr_ify(image).reshape((-1,))
+
 def one_hot(label, num_classes=10):
 	return (np.arange(num_classes) == label).astype(np.int32)
 
@@ -50,7 +55,7 @@ def get_next_batch(mode, batch_size):
 	X = []
 	Y = []
 	for _ in range(batch_size):
-		image = grayscale_flat(next(IMAGES[mode]))
+		image = bgr_flat(next(IMAGES[mode]))
 		label = one_hot(next(LABELS[mode]))
 		X.append(image)
 		Y.append(label)
