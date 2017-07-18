@@ -13,21 +13,39 @@ def init_om(isOM):
 	for mode in ["train", "test"]:
 		IMAGES[mode], LABELS[mode] = prepare_cifar(mode, isOM)
 
-def unpickle(file):
+def decode3(input):
+	if isinstance(input, dict):
+		return {decode3(key): decode3(value) for key, value in input.items()}
+	elif isinstance(input, list):
+		return [decode3(element) for element in input]
+	elif isinstance(input, bytes):
+		return input.decode('utf-8')
+	else:
+		return input
+
+def unpickle2(file):
 	import cPickle
 	with open(file, 'rb') as fo:
 		dict = cPickle.load(fo)
 	return dict
 
+def unpickle3(file):
+    import pickle
+    with open(file, 'rb') as fo:
+        dict = pickle.load(fo, encoding='bytes')
+    return decode3(dict)
+
 def prepare_cifar(mode, isOM):
 	import os
 	import filename_paths
+	unpickle = unpickle3 if isOM else unpickle2
+	
 	data_dir = filename_paths.get_cifar_images_path(isOM)
 
 	if mode == "train":
 		num_datafiles = 5
 		filenames = [os.path.join(data_dir, 'data_batch_%d' % i)
-					for i in xrange(1, num_datafiles+1)]
+					for i in range(1, num_datafiles+1)]
 		files = [unpickle(file) for file in filenames]
 		images = np.concatenate([file["data"] for file in files])
 		labels = np.concatenate([file["labels"] for file in files])

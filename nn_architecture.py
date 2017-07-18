@@ -62,8 +62,8 @@ class MNIST_Network(Network):
 			"kernel": 5, 
 			"poolsize": 2
 		}
-		self.__dict__.update((k,v) for k,v in default.iteritems())
-		self.__dict__.update((k,v) for k,v in kwargs.iteritems() if k in default)
+		self.__dict__.update((k,v) for k,v in default.items())
+		self.__dict__.update((k,v) for k,v in kwargs.items() if k in default)
 
 
 	def set_weights(self):
@@ -150,8 +150,8 @@ class CIFAR_Network(Network):
 			"kernel": 5,
 			"poolsize": 2
 		}
-		self.__dict__.update((k,v) for k,v in default.iteritems())
-		self.__dict__.update((k,v) for k,v in kwargs.iteritems() if k in default)
+		self.__dict__.update((k,v) for k,v in default.items())
+		self.__dict__.update((k,v) for k,v in kwargs.items() if k in default)
 
 
 	def set_weights(self):
