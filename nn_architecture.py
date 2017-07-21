@@ -1,4 +1,6 @@
 import tensorflow as tf
+import numpy as np
+import unittest
 
 def conv2d(x, W, b, strides=1):
 	# Conv2D wrapper, with bias and relu activation
@@ -10,6 +12,56 @@ def maxpool2d(x, k=2):
 	# MaxPool2D wrapper
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
+
+
+def _modulus_pair(index_shift, n):
+	# DEPRECATED
+	# Expecting index_shift to be an array of tuples in [n] x [n]
+	k_area = len(index_shift)
+	theshape = (n,n,k_area,2)
+
+	shift = np.vstack([index_shift] * (n*n)).reshape(theshape)
+	indices = np.array([[(p,q) for p in range(n)] for q in range(n)])
+	index = np.dstack([indices] * k_area).reshape(theshape)
+
+	deconv = (index + shift) % n
+	return deconv
+
+def _modulus_flat(index_shift, n):
+	# Expecting index_shift to be array of numbers in [0, n^2-1]
+	k_area = len(index_shift)
+
+	shift = np.vstack([index_shift] * (n*n))
+	index = np.vstack([np.arange(n*n)] * k_area).T
+
+	return (index + shift) % (n*n)
+
+
+
+class Tests(unittest.TestCase):
+	def test_modulus_pair(self):
+		shifts = [(0,0), (0,1), (1,0), (1,1)]
+		n = 3
+		deconv = _modulus_pair(shifts, n)
+		#print(deconv.shape)
+		#print(deconv)
+	def test_modulus_flat(self):
+		shifts = [0, 1, 3, 4]
+		n = 3
+		deconv = _modulus_flat(shifts, n)
+		#print(deconv.shape)
+		#print(deconv)
+
+
+
+
+# Unit test
+
+if __name__ == "__main__":
+	a = np.arange(192).astype(np.float32)
+	x = tf.reshape(a, shape=[-1, 4, 4, 3])
+	unittest.main()
+
 
 # Architecture parameters
 
