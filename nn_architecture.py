@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import unittest
+np.set_printoptions(threshold=np.nan)
 
 def conv2d(x, W, b, strides=1):
 	# Conv2D wrapper, with bias and relu activation
@@ -13,38 +14,88 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
+def conv_nolocality(x, W, n=32, channels=3, next_depth=64, k=3):
+	# assuming 3x3 deconv; fixing the indices for now.
+	# use tf.gather and tf.scatter_update
+	index_shift = range(k*k)
+	x_mat = tf.reshape(x, [-1, n*n*channels])
 
-def _modulus_pair(index_shift, n):
-	# DEPRECATED
-	# Expecting index_shift to be an array of tuples in [n] x [n]
-	k_area = len(index_shift)
-	theshape = (n,n,k_area,2)
+	zSlice = np.zeros([n * n, channels, next_depth])
+	coords = _modulus_flat(index_shift, n)
+	W_shared = W.reshape((k*k, channels, next_depth))
 
-	shift = np.vstack([index_shift] * (n*n)).reshape(theshape)
-	indices = np.array([[(p,q) for p in range(n)] for q in range(n)])
-	index = np.dstack([indices] * k_area).reshape(theshape)
+	print "W:", W_shared, W_shared.shape
 
-	deconv = (index + shift) % n
-	return deconv
+	W_mat = flat_scatter(zSlice, coords, W_shared, n, k)
+
+
+	# W_shared = tf.cast(W_shared, tf.float64)
+	# coords = tf.cast(_modulus_flat(index_shift, n), tf.int64)
+	# indices = tf.cast(np.arange(n*n), tf.int64)
+
+	# def deconv(indices):
+	# 	#pixels = tf.gather(coords, index)
+	# 	zeros = tf.Variable(np.zeros([n * n, channels, next_depth]), dtype=tf.float64)
+	# 	mask = tf.scatter_update(zeros, indices, W_shared)
+	# 	return mask
+	# 	return tf.reshape(mask, [n*n*channels, next_depth])
+
+	# W_mat = tf.map_fn(fn=deconv, elems=coords, dtype=tf.float64) 		# 1024 x (1024*3) x 64
+	#W_mat = tf.reshape(W_mat, [n, n, (n*n*channels), next_depth])
+	#W_mat = tf.transpose(W_mat, perm=[2, 0, 1, 3])
+
+	return x_mat, W_mat, tf.cast(coords, tf.int64)
+
+def flat_scatter(z, indices, W, n, k):
+	z_shape = z.shape 
+	zeros = np.concatenate([z]* (n*n), axis=0)
+
+	_flat = np.hstack([np.arange(n*n).reshape((-1,1))] * (k*k))
+	_flat = _flat * (n*n)
+	ind_flat = (indices + _flat).flatten()
+
+	W_flat = np.concatenate([W] * (n*n), axis=0)
+
+	# print zeros.shape
+	# print ind_flat, ind_flat.shape
+	# print W_flat.shape
+
+
+	out = tf.scatter_update(tf.Variable(zeros), ind_flat, W_flat)
+	out = tf.reshape(out, (n*n,)+z_shape)
+	return out
 
 def _modulus_flat(index_shift, n):
 	# Expecting index_shift to be array of numbers in [0, n^2-1]
 	k_area = len(index_shift)
-
 	shift = np.vstack([index_shift] * (n*n))
 	index = np.vstack([np.arange(n*n)] * k_area).T
+	# Shape: (n*n) x (k*k)
+	ans = (index + shift) % (n*n)
+	return ans
 
-	return (index + shift) % (n*n)
 
+class TF_Test(tf.test.TestCase):
+	def test_nolocality(self):
+		batch = 1
+		n = 5
+		channels = 1
+		next_depth = 1
+		k = 2
+		x = np.arange(batch * n * n * channels).reshape((batch,n,n,channels))
+		W = np.arange(1, k * k * channels * next_depth+1).reshape(k, k, channels, next_depth)
+		#W = np.ones(k * k * channels * next_depth).reshape(k, k, channels, next_depth)
+
+		xMat, WMat, c = conv_nolocality(x, W, n, channels, next_depth, k)
+		init = tf.initialize_all_variables()
+			
+		with self.test_session() as sess:
+			sess.run(init)
+			xans, wans, cans = sess.run([xMat, WMat, c])
+			print(wans, wans.shape)
 
 
 class Tests(unittest.TestCase):
-	def test_modulus_pair(self):
-		shifts = [(0,0), (0,1), (1,0), (1,1)]
-		n = 3
-		deconv = _modulus_pair(shifts, n)
-		#print(deconv.shape)
-		#print(deconv)
 	def test_modulus_flat(self):
 		shifts = [0, 1, 3, 4]
 		n = 3
@@ -54,13 +105,11 @@ class Tests(unittest.TestCase):
 
 
 
-
 # Unit test
 
 if __name__ == "__main__":
-	a = np.arange(192).astype(np.float32)
-	x = tf.reshape(a, shape=[-1, 4, 4, 3])
-	unittest.main()
+	#unittest.main()
+	tf.test.main()
 
 
 # Architecture parameters
@@ -234,6 +283,7 @@ class CIFAR_Network(Network):
 		def convnet(x):
 			# Reshape input picture
 			x = tf.reshape(x, shape=[-1, self.image_len, self.image_len, 3])
+			print x
 
 			# Convolution Layer
 			conv1 = conv2d(x, weights['wc1'], biases['bc1'])
