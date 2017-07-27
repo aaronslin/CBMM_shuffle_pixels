@@ -19,14 +19,10 @@ def conv_nolocality(x, W, n=32, channels=3, next_depth=64, k=3):
 	# use tf.gather and tf.scatter_update
 	index_shift = range(k*k)
 	x_mat = tf.reshape(x, [-1, n*n*channels])
+	
 
-	zSlice = np.zeros([n * n, channels, next_depth])
-	coords = _modulus_flat(index_shift, n)
-	W_shared = W.reshape((k*k, channels, next_depth))
-
-	print "W:", W_shared, W_shared.shape
-
-	W_mat = flat_scatter(zSlice, coords, W_shared, n, k)
+	W_shape = (n*n, k*k, channels, next_depth)
+	W_matrix = _flat_scatter(index_shift, W, n)
 
 
 	# W_shared = tf.cast(W_shared, tf.float64)
@@ -44,25 +40,69 @@ def conv_nolocality(x, W, n=32, channels=3, next_depth=64, k=3):
 	#W_mat = tf.reshape(W_mat, [n, n, (n*n*channels), next_depth])
 	#W_mat = tf.transpose(W_mat, perm=[2, 0, 1, 3])
 
-	return x_mat, W_mat, tf.cast(coords, tf.int64)
+	return x_mat, W_matrix
 
-def flat_scatter(z, indices, W, n, k):
-	z_shape = z.shape 
-	zeros = np.concatenate([z]* (n*n), axis=0)
+def _flat_scatter(index_shift, W, n):
+	'''
+	Disclaimer: This code is /really/ ugly.
+	
+	The goal of this helper function is to use tf.scatter_update()
+	to create the weight matrices that represent a nonlocal
+	convolutions. The final weight matrix W_mat should have a shape: 
+		(n*n, n*n, channels, next_depth)
+	
+	Dim[0]: We need to perform n*n convolutions, 1 centered around each
+		pixel of the input image. Each slice along this dimension is
+		a weight matrix representing each convolution. For example, if
+		channels=next_depth=1 and n=4 with k(ernel_size)=2, we could have:
 
+		(1 1 0 0 
+		 1 1 0 0
+		 0 0 0 0
+		 0 0 0 0).flatten()
+
+	Dim[1]: There are n*n pixels for a weight matrix slice that corresponds
+		to a convolution centered around one pixel.
+	Dim[2]: The number of channels in the image.
+	Dim[3]: The depth of the next convolutional layer.
+
+
+	The weight matrix should be sparse, so we start with a zero matrix,
+	`zeros`. The variable `ind_flat` specifies which indices of the
+	matrix `zeros` should be a convolution. The variable `W_flat`
+	specifies these values. 
+
+	All of these computations are flattened into (n*n*dim[0],) + dim[1:]
+	arrays, so that tf.scatter_update is executed once instead of n*n 
+	times. I couldn't figure out how to use tf.map_fn to call 
+	tf.scatter_update n*n times, which would have been more elegant.
+	'''
+
+	(k, k, channels, next_depth) = W.shape
+
+	# zSlice: 	(n*n, channels, next_depth) 	# 1 conv
+	# zeros: 	(n*n*n*n, channels, next_depth) # n*n convs
+	zSlice = np.zeros([n*n, channels, next_depth])
+	zeros = np.concatenate([zSlice]* (n*n), axis=0) 
+
+	# _flat, coords: 	(n*n, k*k)
+	# ind_flat:			(n*n*k*k, )
+	# Purpose: provide index offsets, since zeros is flattened
+	coords = _modulus_flat(index_shift, n)
 	_flat = np.hstack([np.arange(n*n).reshape((-1,1))] * (k*k))
 	_flat = _flat * (n*n)
-	ind_flat = (indices + _flat).flatten()
+	ind_flat = (coords + _flat).flatten()
 
-	W_flat = np.concatenate([W] * (n*n), axis=0)
+	# W_shared:	(k*k, channels, next_depth)
+	# W_flat: 	(n*n*k*k, channels, next_depth)
+	# Purpose: repeat values of W for all n*n convolutions
+	W_shared = W.reshape((k*k, channels, next_depth))
+	W_flat = np.concatenate([W_shared] * (n*n), axis=0)
 
-	# print zeros.shape
-	# print ind_flat, ind_flat.shape
-	# print W_flat.shape
-
-
+	# orig_shape: (n*n, n*n, channels, next_depth)
+	orig_shape = (n*n, n*n, channels, next_depth)
 	out = tf.scatter_update(tf.Variable(zeros), ind_flat, W_flat)
-	out = tf.reshape(out, (n*n,)+z_shape)
+	out = tf.reshape(out, orig_shape)
 	return out
 
 def _modulus_flat(index_shift, n):
@@ -79,19 +119,19 @@ class TF_Test(tf.test.TestCase):
 	def test_nolocality(self):
 		batch = 1
 		n = 5
-		channels = 1
+		channels = 3
 		next_depth = 1
 		k = 2
 		x = np.arange(batch * n * n * channels).reshape((batch,n,n,channels))
 		W = np.arange(1, k * k * channels * next_depth+1).reshape(k, k, channels, next_depth)
 		#W = np.ones(k * k * channels * next_depth).reshape(k, k, channels, next_depth)
 
-		xMat, WMat, c = conv_nolocality(x, W, n, channels, next_depth, k)
+		xMat, WMat = conv_nolocality(x, W, n, channels, next_depth, k)
 		init = tf.initialize_all_variables()
 			
 		with self.test_session() as sess:
 			sess.run(init)
-			xans, wans, cans = sess.run([xMat, WMat, c])
+			xans, wans = sess.run([xMat, WMat])
 			print(wans, wans.shape)
 
 
