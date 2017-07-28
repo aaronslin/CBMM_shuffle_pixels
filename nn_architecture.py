@@ -18,7 +18,7 @@ def conv_nolocality(X, W_raw, setting="convolution"):
 	(batchSize, n, n, prevDepth) = X.shape
 	(k, k, prevDepth, nextDepth) = W_raw.shape
 
-	index_shift = get_deconv_indices(n, k, setting)
+	index_shift = _get_deconv_indices(n, k, setting)
 	X = tf.reshape(X, (batchSize, n*n*prevDepth))
 	W = _flat_scatter(index_shift, W_raw, n)
 
@@ -117,7 +117,7 @@ def _modulus_flat(index_shift, n):
 	ans = (index + shift) % (n*n)
 	return ans
 
-def get_deconv_indices(n, k, setting):
+def _get_deconv_indices(n, k, setting):
 	'''
 	Inputs:
 		n: the side length of the image being convolved (32 for CIFAR-10)
@@ -158,17 +158,15 @@ def get_deconv_indices(n, k, setting):
 
 
 class TF_Test(tf.test.TestCase):
-	def test_flat_scatter(self):
+	def test_conv_arange(self):
 		batch = 2
 		n = 5
 		prevDepth = 3
 		nextDepth = 2
 		k = 2
 		x = np.arange(batch * n * n * prevDepth).reshape((batch,n,n,prevDepth))
-		#w = np.arange(1, k * k * prevDepth * nextDepth+1).reshape(k, k, prevDepth, nextDepth)
-		w = np.ones(k * k * prevDepth * nextDepth).reshape(k, k, prevDepth, nextDepth)
+		w = np.arange(1, k * k * prevDepth * nextDepth+1).reshape(k, k, prevDepth, nextDepth)
 		setting = "convolution"
-		#W = np.ones(k * k * prevDepth * nextDepth).reshape(k, k, prevDepth, nextDepth)
 
 		X, W, Y = conv_nolocality(x, w, setting)
 		init = tf.initialize_all_variables()
@@ -176,8 +174,55 @@ class TF_Test(tf.test.TestCase):
 		with self.test_session() as sess:
 			sess.run(init)
 			xans, wans, yans = sess.run([X, W, Y])
+
+	def test_conv_ones(self):
+		x, w, setting, y = self.generate_xw_2()
+
+		X, W, Y = conv_nolocality(x, w, setting)
+		init = tf.initialize_all_variables()
+			
+		with self.test_session() as sess:
+			sess.run(init)
+			xans, wans, yans = sess.run([X, W, Y])
+			print(xans)
+			print("********************************")
+			print(wans)
+			print("********************************")
 			print(yans)
 			print(xans.shape, wans.shape, yans.shape)
+			print("Expected:", y)
+
+	def generate_xw_1(self):
+		batch = 1
+		n = 4
+		prevDepth = 3
+		nextDepth = 1
+		k = 2
+
+		rgb = range(1, prevDepth+1)
+		x = np.array([100*i+j for i in range(n*n) for j in rgb])
+		x = x.reshape((batch, n, n, prevDepth))
+
+		ones = [1] * prevDepth
+		w = np.concatenate([ones]*4, axis=0)
+		w = w.reshape((k, k, prevDepth, nextDepth))
+
+		setting = "consecutive"
+
+		ybase = (24 + (np.arange(13)*2+3)*600).astype(np.float32)
+		wrap_ind = [9, 6, 3]
+		y = np.concatenate([ybase, ybase[wrap_ind]], axis=0).reshape((batch, -1, nextDepth))
+
+		return x, w, setting, y
+		
+	def generate_xw_2(self):
+		batch = 3
+		x, w, setting, y = self.generate_xw_1()
+
+		x = np.vstack([x]*batch)
+		y = np.vstack([y]*batch)
+
+		return x, w, setting, y
 
 
 class Tests(unittest.TestCase):
