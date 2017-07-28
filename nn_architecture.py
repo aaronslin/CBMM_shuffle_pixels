@@ -14,47 +14,45 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
-def conv_nolocality(x, W, n=32, channels=3, next_depth=64, k=3):
-	# assuming 3x3 deconv; fixing the indices for now.
-	# use tf.gather and tf.scatter_update
-	index_shift = range(k*k)
-	x_mat = tf.reshape(x, [-1, n*n*channels])
-	
+def conv_nolocality(X, W_raw, setting="convolution"):
+	(batchSize, n, n, prevDepth) = X.shape
+	(k, k, prevDepth, nextDepth) = W_raw.shape
 
-	W_shape = (n*n, k*k, channels, next_depth)
-	W_matrix = _flat_scatter(index_shift, W, n)
+	index_shift = get_deconv_indices(n, k, setting)
+	X = tf.reshape(X, (batchSize, n*n*prevDepth))
+	W = _flat_scatter(index_shift, W_raw, n)
 
+	X = tf.cast(X, tf.float32)
+	W = tf.cast(W, tf.float32)
 
-	# W_shared = tf.cast(W_shared, tf.float64)
-	# coords = tf.cast(_modulus_flat(index_shift, n), tf.int64)
-	# indices = tf.cast(np.arange(n*n), tf.int64)
+	Y = tf.matmul(X, W)
+	Y = tf.reshape(Y, (batchSize, n*n, nextDepth))
 
-	# def deconv(indices):
-	# 	#pixels = tf.gather(coords, index)
-	# 	zeros = tf.Variable(np.zeros([n * n, channels, next_depth]), dtype=tf.float64)
-	# 	mask = tf.scatter_update(zeros, indices, W_shared)
-	# 	return mask
-	# 	return tf.reshape(mask, [n*n*channels, next_depth])
+	return X, W, Y
 
-	# W_mat = tf.map_fn(fn=deconv, elems=coords, dtype=tf.float64) 		# 1024 x (1024*3) x 64
-	#W_mat = tf.reshape(W_mat, [n, n, (n*n*channels), next_depth])
-	#W_mat = tf.transpose(W_mat, perm=[2, 0, 1, 3])
+def _conv_matmul(x, W):
+	'''
+	Inputs:
+		x: A (batchSize, n*n*prevDepth) shaped input batch
+		W: A (n*n*prevDepth, n*n, nextDepth) shaped weight matrix
+	Output:
+		y: A (batchSize, n*n, nextDepth) shaped output matrix
+	'''
+	pass
 
-	return x_mat, W_matrix
-
-def _flat_scatter(index_shift, W, n):
+def _flat_scatter(index_shift, W_raw, n):
 	'''
 	Disclaimer: This code is /really/ ugly.
 	
 	The goal of this helper function is to use tf.scatter_update()
 	to create the weight matrices that represent a nonlocal
-	convolutions. The final weight matrix W_mat should have a shape: 
-		(n*n, n*n, channels, next_depth)
+	convolutions. The final weight matrix W should have a shape: 
+		(n*n, n*n, prevDepth, nextDepth)
 	
 	Dim[0]: We need to perform n*n convolutions, 1 centered around each
 		pixel of the input image. Each slice along this dimension is
 		a weight matrix representing each convolution. For example, if
-		channels=next_depth=1 and n=4 with k(ernel_size)=2, we could have:
+		prevDepth=nextDepth=1 and n=4 with k(ernel_size)=2, we could have:
 
 		(1 1 0 0 
 		 1 1 0 0
@@ -63,7 +61,7 @@ def _flat_scatter(index_shift, W, n):
 
 	Dim[1]: There are n*n pixels for a weight matrix slice that corresponds
 		to a convolution centered around one pixel.
-	Dim[2]: The number of channels in the image.
+	Dim[2]: The number of channels in the image or the current layer.
 	Dim[3]: The depth of the next convolutional layer.
 
 
@@ -78,11 +76,11 @@ def _flat_scatter(index_shift, W, n):
 	tf.scatter_update n*n times, which would have been more elegant.
 	'''
 
-	(k, k, channels, next_depth) = W.shape
+	(k, k, prevDepth, nextDepth) = W_raw.shape
 
-	# zSlice: 	(n*n, channels, next_depth) 	# 1 conv
-	# zeros: 	(n*n*n*n, channels, next_depth) # n*n convs
-	zSlice = np.zeros([n*n, channels, next_depth])
+	# zSlice: 	(n*n, prevDepth, nextDepth) 	# 1 conv
+	# zeros: 	(n*n*n*n, prevDepth, nextDepth) # n*n convs
+	zSlice = np.zeros([n*n, prevDepth, nextDepth])
 	zeros = np.concatenate([zSlice]* (n*n), axis=0) 
 
 	# _flat, coords: 	(n*n, k*k)
@@ -93,17 +91,22 @@ def _flat_scatter(index_shift, W, n):
 	_flat = _flat * (n*n)
 	ind_flat = (coords + _flat).flatten()
 
-	# W_shared:	(k*k, channels, next_depth)
-	# W_flat: 	(n*n*k*k, channels, next_depth)
+	# W_raw:	(k*k, prevDepth, nextDepth)
+	# W_flat: 	(n*n*k*k, prevDepth, nextDepth)
 	# Purpose: repeat values of W for all n*n convolutions
-	W_shared = W.reshape((k*k, channels, next_depth))
-	W_flat = np.concatenate([W_shared] * (n*n), axis=0)
+	W_raw = W_raw.reshape((k*k, prevDepth, nextDepth))
+	W_flat = np.concatenate([W_raw] * (n*n), axis=0)
 
-	# orig_shape: (n*n, n*n, channels, next_depth)
-	orig_shape = (n*n, n*n, channels, next_depth)
-	out = tf.scatter_update(tf.Variable(zeros), ind_flat, W_flat)
-	out = tf.reshape(out, orig_shape)
-	return out
+	# Shape after tf.scatter_update: (n*n*n*n, prevDepth, nextDepth)
+	# 		after 2x tf.reshape: (n*n, n*n*prevDepth, nextDepth)
+	# 		after tf.transpose: (n*n*prevDepth, n*n, nextDepth)
+	# 		returned: 
+	W = tf.scatter_update(tf.Variable(zeros), ind_flat, W_flat)
+	W = tf.reshape(W, (n*n, n*n, prevDepth, nextDepth))
+	W = tf.reshape(W, (n*n, n*n*prevDepth, nextDepth))
+	W = tf.transpose(W, perm=[1, 0, 2])
+	W = tf.reshape(W, (n*n*prevDepth, n*n*nextDepth))
+	return W
 
 def _modulus_flat(index_shift, n):
 	# Expecting index_shift to be array of numbers in [0, n^2-1]
@@ -155,23 +158,26 @@ def get_deconv_indices(n, k, setting):
 
 
 class TF_Test(tf.test.TestCase):
-	def test_nolocality(self):
-		batch = 1
+	def test_flat_scatter(self):
+		batch = 2
 		n = 5
-		channels = 3
-		next_depth = 1
+		prevDepth = 3
+		nextDepth = 2
 		k = 2
-		x = np.arange(batch * n * n * channels).reshape((batch,n,n,channels))
-		W = np.arange(1, k * k * channels * next_depth+1).reshape(k, k, channels, next_depth)
-		#W = np.ones(k * k * channels * next_depth).reshape(k, k, channels, next_depth)
+		x = np.arange(batch * n * n * prevDepth).reshape((batch,n,n,prevDepth))
+		#w = np.arange(1, k * k * prevDepth * nextDepth+1).reshape(k, k, prevDepth, nextDepth)
+		w = np.ones(k * k * prevDepth * nextDepth).reshape(k, k, prevDepth, nextDepth)
+		setting = "convolution"
+		#W = np.ones(k * k * prevDepth * nextDepth).reshape(k, k, prevDepth, nextDepth)
 
-		xMat, WMat = conv_nolocality(x, W, n, channels, next_depth, k)
+		X, W, Y = conv_nolocality(x, w, setting)
 		init = tf.initialize_all_variables()
 			
 		with self.test_session() as sess:
 			sess.run(init)
-			xans, wans = sess.run([xMat, WMat])
-			print(wans, wans.shape)
+			xans, wans, yans = sess.run([X, W, Y])
+			print(yans)
+			print(xans.shape, wans.shape, yans.shape)
 
 
 class Tests(unittest.TestCase):
