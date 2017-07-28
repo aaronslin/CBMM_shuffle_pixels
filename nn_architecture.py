@@ -114,6 +114,45 @@ def _modulus_flat(index_shift, n):
 	ans = (index + shift) % (n*n)
 	return ans
 
+def get_deconv_indices(n, k, setting):
+	'''
+	Inputs:
+		n: the side length of the image being convolved (32 for CIFAR-10)
+		k: the side length of the kernel size
+		setting: {"convolution", "consecutive", "random"}
+
+	Returns: a length k*k array with relative indices to specify the
+	pixels being convolved. The image is flattened into an n*n vector.
+	For example, with a 6x6 image and a 3x3 convolution at the pixel
+	marked X:
+
+	0 0 0 0 0 0
+	1 1 1 0 0 0
+	1 X 1 0 0 0
+	1 1 1 0 0 0 
+	0 0 0 0 0 0 
+	0 0 0 0 0 0 
+
+	We should obtain the indices [-7, -6, -5, -1, 0, 1, 5, 6, 7], as
+	these are the pixels (relative to the X) marked with a "1".
+
+	Settings: 
+		"convolution": See above example. A normal k*k convolution.
+		"consecutive": For test purposes. Returns the next k*k pixels.
+		"random": Returns a random set of k*k pixels.
+	'''
+	if setting == "convolution":
+		min = -k // 2
+		max = k // 2
+		horiz = range(min+1, max+1)
+		vert = [n*x for x in horiz]
+		indices = [h+v for h in horiz for v in vert]
+	if setting == "consecutive":
+		indices = range(k*k)
+	if setting == "random":
+		pass
+	return indices
+
 
 class TF_Test(tf.test.TestCase):
 	def test_nolocality(self):
