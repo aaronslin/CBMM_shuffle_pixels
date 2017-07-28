@@ -100,7 +100,7 @@ def _flat_scatter(index_shift, W_raw, n):
 	# Shape after tf.scatter_update: (n*n*n*n, prevDepth, nextDepth)
 	# 		after 2x tf.reshape: (n*n, n*n*prevDepth, nextDepth)
 	# 		after tf.transpose: (n*n*prevDepth, n*n, nextDepth)
-	# 		returned: 
+	# 		returned: (n*n*prevDepth, n*n*nextDepth)
 	W = tf.scatter_update(tf.Variable(zeros), ind_flat, W_flat)
 	W = tf.reshape(W, (n*n, n*n, prevDepth, nextDepth))
 	W = tf.reshape(W, (n*n, n*n*prevDepth, nextDepth))
