@@ -14,7 +14,13 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
-def conv_nolocality(X, W_raw, setting="convolution"):
+'''
+TODO:
+	- add option for biases
+	- find a way to pad the image? (optional)
+'''
+
+def conv_nolocality(X, W_raw, setting):
 	(batchSize, n, n, prevDepth) = X.shape
 	(k, k, prevDepth, nextDepth) = W_raw.shape
 
@@ -25,7 +31,7 @@ def conv_nolocality(X, W_raw, setting="convolution"):
 	X = tf.cast(X, tf.float32)
 	W = tf.cast(W, tf.float32)
 
-	Y = tf.matmul(X, W)
+	Y = tf.matmul(X, W, b_is_sparse=True)
 	Y = tf.reshape(Y, (batchSize, n*n, nextDepth))
 
 	return X, W, Y
