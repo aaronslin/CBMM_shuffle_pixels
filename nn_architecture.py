@@ -15,7 +15,7 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
-def conv_nolocality(X, W_raw, B, setting="random"):
+def conv_nolocality(X, W_raw, B, setting):
 	'''
 	Convolutions that remove locality property by convolving pixels 
 	that aren't necessarily adjacent.
@@ -117,7 +117,7 @@ def _modulus_flat(index_shift, n):
 	ans = (index + shift) % (n*n)
 	return ans
 
-def _get_deconv_indices(n, k, setting, filename=None):
+def _get_deconv_indices(n, k, setting):
 	'''
 	Inputs:
 		n: the side length of the image being convolved (32 for CIFAR-10)
@@ -139,30 +139,28 @@ def _get_deconv_indices(n, k, setting, filename=None):
 	We should obtain the indices [-7, -6, -5, -1, 0, 1, 5, 6, 7], as
 	these are the pixels (relative to the X) marked with a "1".
 
-	Settings: 
+	Setting: 
 		"pseudo_conv": See above example. A normal k*k convolution.
 		"consecutive": For test purposes. Returns the next k*k pixels.
-		"save_random": Returns a random set of k*k pixels and saves.
-		"load_random": Loads a random array from filename.
-						If no filename, then generate a random array.
+		"random": Returns a random set of k*k pixels.
+		{"filename": ...}: Loads a random array from filename.
 	'''
-	if setting == "pseudo_conv":
-		min = -k // 2
-		max = k // 2
-		horiz = range(min+1, max+1)
-		vert = [n*x for x in horiz]
-		indices = [h+v for h in horiz for v in vert]
-	elif setting == "consecutive":
-		indices = range(k*k)
-	elif setting == "save_random":
-		indices = random.sample(range(n*n), k*k)
-		if filename is not None:
-			np.save(filename, indices)
-	elif setting == "load_random":
-		if filename is not None:
-			indices = np.load(filename)
-		else:
-			indices = _get_deconv_indices(n, k, "save_random")
+
+	if type(setting) is string:
+		if setting == "pseudo_conv":
+			min = -k // 2
+			max = k // 2
+			horiz = range(min+1, max+1)
+			vert = [n*x for x in horiz]
+			indices = [h+v for h in horiz for v in vert]
+		elif setting == "consecutive":
+			indices = range(k*k)
+		elif setting == "random":
+			indices = random.sample(range(n*n), k*k)
+
+	if type(setting) is dict:
+		filename = setting["filename"]
+		indices = np.load(filename)
 
 	return indices
 
