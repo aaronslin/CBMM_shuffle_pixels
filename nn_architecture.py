@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import unittest
+import random
 np.set_printoptions(threshold=np.nan)
 
 def conv2d(x, W, b, strides=1):
@@ -116,12 +117,12 @@ def _modulus_flat(index_shift, n):
 	ans = (index + shift) % (n*n)
 	return ans
 
-def _get_deconv_indices(n, k, setting):
+def _get_deconv_indices(n, k, setting, filename=None):
 	'''
 	Inputs:
 		n: the side length of the image being convolved (32 for CIFAR-10)
 		k: the side length of the kernel size
-		setting: {"convolution", "consecutive", "random"}
+		setting: (see below)
 
 	Returns: a length k*k array with relative indices to specify the
 	pixels being convolved. The image is flattened into an n*n vector.
@@ -139,20 +140,30 @@ def _get_deconv_indices(n, k, setting):
 	these are the pixels (relative to the X) marked with a "1".
 
 	Settings: 
-		"convolution": See above example. A normal k*k convolution.
+		"pseudo_conv": See above example. A normal k*k convolution.
 		"consecutive": For test purposes. Returns the next k*k pixels.
-		"random": Returns a random set of k*k pixels.
+		"save_random": Returns a random set of k*k pixels and saves.
+		"load_random": Loads a random array from filename.
+						If no filename, then generate a random array.
 	'''
-	if setting == "convolution":
+	if setting == "pseudo_conv":
 		min = -k // 2
 		max = k // 2
 		horiz = range(min+1, max+1)
 		vert = [n*x for x in horiz]
 		indices = [h+v for h in horiz for v in vert]
-	if setting == "consecutive":
+	elif setting == "consecutive":
 		indices = range(k*k)
-	if setting == "random":
-		pass
+	elif setting == "save_random":
+		indices = random.sample(range(n*n), k*k)
+		if filename is not None:
+			np.save(filename, indices)
+	elif setting == "load_random":
+		if filename is not None:
+			indices = np.load(filename)
+		else:
+			indices = _get_deconv_indices(n, k, "save_random")
+
 	return indices
 
 
