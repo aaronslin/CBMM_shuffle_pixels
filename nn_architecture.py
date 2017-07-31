@@ -14,13 +14,15 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
-'''
-TODO:
-	- add option for biases
-	- find a way to pad the image? (optional)
-'''
+def conv_nolocality(X, W_raw, B, setting="random"):
+	'''
+	Convolutions that remove locality property by convolving pixels 
+	that aren't necessarily adjacent.
 
-def conv_nolocality(X, W_raw, setting):
+	Currently lacking in features to:
+		- padding the image
+		- stride options
+	'''
 	(batchSize, n, n, prevDepth) = X.shape
 	(k, k, prevDepth, nextDepth) = W_raw.shape
 
@@ -34,17 +36,8 @@ def conv_nolocality(X, W_raw, setting):
 	Y = tf.matmul(X, W, b_is_sparse=True)
 	Y = tf.reshape(Y, (batchSize, n*n, nextDepth))
 
-	return X, W, Y
-
-def _conv_matmul(x, W):
-	'''
-	Inputs:
-		x: A (batchSize, n*n*prevDepth) shaped input batch
-		W: A (n*n*prevDepth, n*n, nextDepth) shaped weight matrix
-	Output:
-		y: A (batchSize, n*n, nextDepth) shaped output matrix
-	'''
-	pass
+	Y = tf.nn.bias_add(Y, B)
+	return tf.nn.relu(Y)
 
 def _flat_scatter(index_shift, W_raw, n):
 	'''
