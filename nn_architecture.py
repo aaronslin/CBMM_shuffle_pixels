@@ -15,7 +15,12 @@ def maxpool2d(x, k=2):
 	return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
 						  padding='SAME')
 
-def conv_nolocality(X, W_raw, B, setting):
+def conv_nolocality(X, W, B, setting):
+	Y = _conv_nolocality_nobias(X, W, setting)
+	Y = tf.nn.bias_add(Y, B)
+	return tf.nn.relu(Y)
+
+def _conv_nolocality_nobias(X, W_raw, setting):
 	'''
 	Convolutions that remove locality property by convolving pixels 
 	that aren't necessarily adjacent.
@@ -37,8 +42,7 @@ def conv_nolocality(X, W_raw, B, setting):
 	Y = tf.matmul(X, W, b_is_sparse=True)
 	Y = tf.reshape(Y, (batchSize, n*n, nextDepth))
 
-	Y = tf.nn.bias_add(Y, B)
-	return tf.nn.relu(Y)
+	return X, W, Y
 
 def _flat_scatter(index_shift, W_raw, n):
 	'''
@@ -146,7 +150,7 @@ def _get_deconv_indices(n, k, setting):
 		{"filename": ...}: Loads a random array from filename.
 	'''
 
-	if type(setting) is string:
+	if type(setting) is str:
 		if setting == "pseudo_conv":
 			min = -k // 2
 			max = k // 2
@@ -174,9 +178,12 @@ class TF_Test(tf.test.TestCase):
 		k = 2
 		x = np.arange(batch * n * n * prevDepth).reshape((batch,n,n,prevDepth))
 		w = np.arange(1, k * k * prevDepth * nextDepth+1).reshape(k, k, prevDepth, nextDepth)
-		setting = "convolution"
+		setting = "pseudo_conv"
 
-		X, W, Y = conv_nolocality(x, w, setting)
+		b = tf.constant(np.zeros([nextDepth]).astype(np.float32))
+		print b
+
+		X, W, Y = _conv_nolocality_nobias(x, w, setting)
 		init = tf.initialize_all_variables()
 			
 		with self.test_session() as sess:
@@ -184,9 +191,9 @@ class TF_Test(tf.test.TestCase):
 			xans, wans, yans = sess.run([X, W, Y])
 
 	def test_conv_ones(self):
-		x, w, setting, y = self.generate_xw_2()
+		x, w, b, setting, y = self.generate_xw_2()
 
-		X, W, Y = conv_nolocality(x, w, setting)
+		X, W, Y = _conv_nolocality_nobias(x, w, setting)
 		init = tf.initialize_all_variables()
 			
 		with self.test_session() as sess:
@@ -215,22 +222,24 @@ class TF_Test(tf.test.TestCase):
 		w = np.concatenate([ones]*4, axis=0)
 		w = w.reshape((k, k, prevDepth, nextDepth))
 
+		b = np.zeros([nextDepth])
+
 		setting = "consecutive"
 
 		ybase = (24 + (np.arange(13)*2+3)*600).astype(np.float32)
 		wrap_ind = [9, 6, 3]
 		y = np.concatenate([ybase, ybase[wrap_ind]], axis=0).reshape((batch, -1, nextDepth))
 
-		return x, w, setting, y
+		return x, w, b, setting, y
 		
 	def generate_xw_2(self):
 		batch = 3
-		x, w, setting, y = self.generate_xw_1()
+		x, w, b, setting, y = self.generate_xw_1()
 
 		x = np.vstack([x]*batch)
 		y = np.vstack([y]*batch)
 
-		return x, w, setting, y
+		return x, w, b, setting, y
 
 
 class Tests(unittest.TestCase):
